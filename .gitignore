@@ -1,2 +1,6 @@
+#python specific folders
 .oculus-venv
+__pycache__
+
+#output folder
 output/
