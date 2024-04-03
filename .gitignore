@@ -2,5 +2,9 @@
 .oculus-venv
 __pycache__
 
-#output folder
+#vscode
+.vscode/
+
+#testing/program operation related
+input.txt
 output/

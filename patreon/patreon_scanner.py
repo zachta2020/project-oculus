@@ -183,7 +183,7 @@ class patreonScanner:
             os.makedirs(output)    
 
         fileName = f"{output}/{self.getFullURL().split('/').pop()}_patreon_results_{date.today()}.csv"
-        print(f"\nSaving Results to {fileName}...")
+        print(f"Saving Results to {fileName}...")
 
         with open(fileName, "w", encoding="utf8") as f:
             f.write(f'Patreon,{self.title},"{self.subtitle}"\n')
@@ -194,7 +194,7 @@ class patreonScanner:
                 f.write("Member Count,N/A\n")
 
             f.write(f"Post Count,{self.postCount}\n")
-            
+
             if self.income is not None:
                 f.write(f'Income,"{self.income}"\n')
             else:
