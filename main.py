@@ -50,6 +50,6 @@ if __name__ == "__main__":
                 print("Error: Empty Target! Skipping...")
             else:
                 scanPatreonTarget(target)
-                print()
+            print()
 
         print("Done.")
