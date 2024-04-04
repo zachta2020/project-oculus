@@ -31,6 +31,7 @@ incomeXPath = "//span[@data-tag='earnings-count']"
 
 seeMoreXPath = "//*[@id='renderPageContentWrapper']/div[1]/div/div/div[3]/div[2]/div[2]/div/div[5]/button"
 ageConfirmXPath = "//button[@data-tag='age-confirmation-button']"
+postListXPath = "//div[@data-tag='creator-public-page-recent-posts']"
 
 class patreonScanner:
     def __init__(self, target):
@@ -62,7 +63,7 @@ class patreonScanner:
     
         try:
             WebDriverWait(self.driver, 5).until(
-                EC.text_to_be_present_in_element((By.XPATH, seeMoreXPath), "See more posts")
+                EC.presence_of_element_located((By.XPATH, postListXPath))
         )
         except TimeoutException:
             print("A timeout has occured. Attempting Age Confirmation Check...")
@@ -75,45 +76,48 @@ class patreonScanner:
                 raise parseFailedException("Parse Failed: Cannot read Creator page.")
             
         # display all posts
-        print("Displaying all posts...")
-
-        try:
-            WebDriverWait(self.driver, 5).until(
-                EC.text_to_be_present_in_element((By.XPATH, seeMoreXPath), "See more posts")
-            )
-
-            postTotal = float(
+        postTotal = float(
                 self.driver.find_element(By.XPATH, postCountXPath)
                 .text.split(" ")[0]
                 .replace(",", "")
             )
-            clickEstimate = int(math.ceil((postTotal - 20.0) / 20.0))
-            clickCounter = 1
+        
+        if postTotal > 20:
+            print("Displaying all posts...")
 
-            seeMore = self.driver.find_element(By.XPATH, seeMoreXPath)
-            page = self.driver.find_element(By.TAG_NAME, "body")
+            try:
+                WebDriverWait(self.driver, 5).until(
+                    EC.text_to_be_present_in_element((By.XPATH, seeMoreXPath), "See more posts")
+                )
 
-            seeMore.click()
-            print(f"Click {clickCounter}/{clickEstimate}")
-            clickCounter += 1
+                
+                clickEstimate = int(math.ceil((postTotal - 20.0) / 20.0))
+                clickCounter = 1
 
-            while True:
-                try:
-                    time.sleep(1)
-                    page.send_keys(Keys.END)
-                    time.sleep(1)
-                    seeMore.click()
-                    print(f"Click {clickCounter}/{clickEstimate}")
-                    clickCounter += 1
-                except ElementClickInterceptedException:
-                    print("Error: Click Intercepted. Retrying...")
-                except StaleElementReferenceException:
-                    print("End of Page found. Proceeding...")
-                    break
+                seeMore = self.driver.find_element(By.XPATH, seeMoreXPath)
+                page = self.driver.find_element(By.TAG_NAME, "body")
 
-        except NoSuchElementException:
-            print("Error: Cannot find button")
-            raise parseFailedException("Parse Failed: Cannot read Creator page.")
+                seeMore.click()
+                print(f"Click {clickCounter}/{clickEstimate}")
+                clickCounter += 1
+
+                while True:
+                    try:
+                        time.sleep(1)
+                        page.send_keys(Keys.END)
+                        time.sleep(1)
+                        seeMore.click()
+                        print(f"Click {clickCounter}/{clickEstimate}")
+                        clickCounter += 1
+                    except ElementClickInterceptedException:
+                        print("Error: Click Intercepted. Retrying...")
+                    except StaleElementReferenceException:
+                        print("End of Page found. Proceeding...")
+                        break
+
+            except NoSuchElementException:
+                print("Error: Cannot find button")
+                raise parseFailedException("Parse Failed: Cannot read Creator page.")
 
         print("Open Done.")
 
