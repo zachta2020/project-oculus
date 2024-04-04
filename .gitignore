@@ -6,5 +6,5 @@ __pycache__
 .vscode/
 
 #testing/program operation related
-input.txt
+input/
 output/
