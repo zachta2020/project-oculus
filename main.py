@@ -1,5 +1,5 @@
 from patreon.patreon_scanner import patreonScanner
-from patreon.exceptions import parseFailedException
+from patreon.exceptions import ParseFailedException
 
 import sys
 
@@ -13,7 +13,7 @@ def scanPatreonTarget(target):
         scanner.display()
         print()
         scanner.record()
-    except parseFailedException as e:
+    except ParseFailedException as e:
         print(e.message)
         print(f"Abandoning Scan of {scanner.target}")
 

@@ -1,6 +1,6 @@
 class ParseFailedException(Exception):
     """
-    Exception raised when patreonScanner fails to parse target website.
+    Exception raised when youtubeScanner fails to parse target website.
     
     """
     def __init__(self, message="Website parse has failed"):
