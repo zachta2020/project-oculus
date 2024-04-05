@@ -18,7 +18,7 @@ import math
 from datetime import date
 import os
 
-from patreon.exceptions import parseFailedException
+from patreon.exceptions import ParseFailedException
 
 baseURL = "https://www.patreon.com"
 
@@ -73,7 +73,7 @@ class patreonScanner:
                 print("Success! Proceeding.\n")
             except NoSuchElementException:
                 print("Age Confirmation Check failed.")
-                raise parseFailedException("Parse Failed: Cannot read Creator page.")
+                raise ParseFailedException("Parse Failed: Cannot read Creator page.")
             
         # display all posts
         postTotal = float(
@@ -117,7 +117,7 @@ class patreonScanner:
 
             except NoSuchElementException:
                 print("Error: Cannot find button")
-                raise parseFailedException("Parse Failed: Cannot read Creator page.")
+                raise ParseFailedException("Parse Failed: Cannot read Creator page.")
 
         print("Open Done.")
 
