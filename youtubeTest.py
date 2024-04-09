@@ -14,8 +14,10 @@ test.scan()
 print()
 test.display()
 print()
-test.record()
+"""
+test.record() """
 print(f"Closing {target}...")
 test.aboutDriver.close()
+test.videoDriver.close()
 
 print("Done.")
