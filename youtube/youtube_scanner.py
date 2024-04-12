@@ -20,6 +20,7 @@ from datetime import date
 import math
 
 from youtube.exceptions import ParseFailedException
+from helpers.counter import Counter
 
 baseURL = "https://www.youtube.com"
 
@@ -46,6 +47,8 @@ class youtubeChannelInfo:
         self.joinDate = None
         self.socmedLinks = []
         self.videos = []
+        self.shorts = []
+        self.livestreams = []
 
 class youtubeScanner:
     def __init__(self, target):
@@ -53,11 +56,19 @@ class youtubeScanner:
 
         self.data = youtubeChannelInfo()
 
+        self.videosFound = False
+        self.shortsFound = False
+        self.liveFound = False
+
+        self.aboutSoup = None
+        self.videoSoup = None
+        self.shortsSoup = None
+        self.liveSoup = None
+
         #start Selenium in headless mode
         options = Options()
         options.add_argument("--headless=new")
-        self.aboutDriver = webdriver.Chrome(options=options)
-        self.videoDriver = webdriver.Chrome(options=options)
+        self.driver = webdriver.Chrome(options=options)
 
     def getFullURL(self):
         if self.target.find(baseURL) == -1:
@@ -65,75 +76,120 @@ class youtubeScanner:
         else:
             return self.target
         
-    def __openVidPage(self):
-        WebDriverWait(self.videoDriver, 5).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "style-scope.ytd-rich-grid-renderer"))
-        )
+    def __openPage(self, pageName):
+        self.driver.get(self.getFullURL() + pageName)
 
-        chips = self.videoDriver.find_elements(By.TAG_NAME, "yt-chip-cloud-chip-renderer")
+        try:
+            WebDriverWait(self.driver, 5).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "style-scope.ytd-rich-grid-renderer"))
+            )
 
-        #print(len(chips))
+            chips = self.driver.find_elements(By.TAG_NAME, "yt-chip-cloud-chip-renderer")
 
-        page = self.videoDriver.find_element(By.TAG_NAME, "body")
+            #print(len(chips))
+            if len(chips) > 0:
+                page = self.driver.find_element(By.TAG_NAME, "body")
 
-        chips[2].click() #click oldest chip
-        time.sleep(1)
+                chips[2].click() #click oldest chip
+                time.sleep(1)
 
-        #get oldest video title
-        oldestTitle = self.videoDriver.find_element(By.ID, "video-title").text
+                #get oldest video title
+                oldestTitle = self.driver.find_element(By.ID, "video-title").text
 
-        chips[0].click() #click newest chip
-        time.sleep(1)
+                chips[0].click() #click newest chip
+                time.sleep(1)
 
-        titles = []
+                titles = []
 
-        #scroll down until the oldest video title is found
-        while True:
-            titles = self.videoDriver.find_elements(By.ID, "video-title")
-            lastTitle = titles[len(titles)-1].text
-            #print(lastTitle)
-            if lastTitle == oldestTitle:
-                break
-            page.send_keys(Keys.END)
-            time.sleep(1)
+                #scroll down until the oldest video title is found
+                while True:
+                    titles = self.driver.find_elements(By.ID, "video-title")
+                    lastTitle = titles[len(titles)-1].text
+                    #print(lastTitle)
+                    if lastTitle == oldestTitle:
+                        break
+                    page.send_keys(Keys.END)
+                    time.sleep(1)
+
+                for title in titles:
+                    print(title.text)
+
+            if pageName == "/videos":
+                self.videoSoup = BeautifulSoup(self.driver.page_source, "html.parser")
+            elif pageName == "/shorts":
+                self.shortsSoup = BeautifulSoup(self.driver.page_source, "html.parser")
+            elif pageName == "/streams":
+                self.liveSoup = BeautifulSoup(self.driver.page_source, "html.parser")
+
+            print(f"{pageName} Opened.")
+        except TimeoutException:
+            print(f"{pageName} Open Failed: Empty Page. Proceeding...")
+            if pageName == "/videos":
+                self.videosFound == False
+            elif pageName == "/shorts":
+                self.shortsFound == False
+            elif pageName == "/streams":
+                self.liveFound == False
 
 
     def open(self):
         fullURL = self.getFullURL()
         print(f"Opening {fullURL}...")
 
-        self.aboutDriver.get(fullURL + "/about")
-        self.videoDriver.get(fullURL + "/videos")
+        self.driver.get(fullURL)
+
+        WebDriverWait(self.driver, 5).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "yt-tab-group-shape-wiz__tabs"))
+        )
+
+        soup = BeautifulSoup(self.driver.page_source, "html.parser")
+
+        self.videosFound = soup.find(attrs={"tab-title": "Videos"}) is not None
+        self.shortsFound = soup.find(attrs={"tab-title": "Shorts"}) is not None
+        self.liveFound = soup.find(attrs={"tab-title": "Live"}) is not None
+
+        print(f"Video Page Found: {self.videosFound}")
+        print(f"Shorts Page Found: {self.shortsFound}")
+        print(f"Live Page Found: {self.liveFound}")
+
+        self.driver.get(fullURL + "/about")
 
         try:
-            WebDriverWait(self.aboutDriver, 5).until(
+            WebDriverWait(self.driver, 5).until(
                 EC.presence_of_element_located((By.ID, aboutContainerID))
             )
         except TimeoutException:
             raise ParseFailedException("Parse Failed: cannot read About page.")
         
-        self.__openVidPage()
+        self.aboutSoup = BeautifulSoup(self.driver.page_source, "html.parser")
+
+        if self.videosFound:
+            self.__openPage("/videos")
+        if self.shortsFound:
+            self.__openPage("/shorts")
+        if self.liveFound:
+            self.__openPage("/streams")
 
         print("Open Done.")
 
     def __scanVideo(self, vidURL):
-        self.videoDriver.get(vidURL)
+        self.driver.get(vidURL)
 
         titleXPath = '//*[@id="title"]/h1/yt-formatted-string'
         commentsXPath = '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-watch-flexy/div[5]/div[1]/div/div[2]/ytd-comments/ytd-item-section-renderer/div[1]/ytd-comments-header-renderer/div[1]/div[1]/h2/yt-formatted-string'
 
-        WebDriverWait(self.videoDriver, 5).until(
+        WebDriverWait(self.driver, 5).until(
                 EC.presence_of_element_located((By.XPATH, titleXPath))
             )
 
-        expandButton = self.videoDriver.find_element(By.ID, "expand")
+        expandButton = self.driver.find_element(By.ID, "expand")
         expandButton.click()
         time.sleep(1)
 
-        vidTitle = self.videoDriver.find_element(By.XPATH, titleXPath).text
-        print(f"\"{vidTitle}\"")
+        vidTitle = self.driver.find_element(By.XPATH, titleXPath).text
+        print(vidTitle)
 
-        watchInfoString = self.videoDriver.find_element(By.CLASS_NAME, "style-scope.ytd-watch-info-text").text.strip()
+        watchInfoString = self.driver.find_element(By.CLASS_NAME, "style-scope.ytd-watch-info-text").text.strip()
         watchInfoList = watchInfoString.split("  ")
 
         #print(watchInfoList)
@@ -141,32 +197,32 @@ class youtubeScanner:
         vidDate = watchInfoList[1].replace("Premiered ", "")
         vidViews = watchInfoList[0].replace(" views", "")
 
-        """collapseButton = self.videoDriver.find_element(By.ID, "collapse")
+        """collapseButton = self.driver.find_element(By.ID, "collapse")
         collapseButton.click()
         time.sleep(1)
 
-        page = self.videoDriver.find_element(By.TAG_NAME, "body")
+        page = self.driver.find_element(By.TAG_NAME, "body")
         page.send_keys(Keys.END)
         time.sleep(5)
-        soup = BeautifulSoup(self.videoDriver.page_source, "html.parser")
+        soup = BeautifulSoup(self.driver.page_source, "html.parser")
 
-        page = self.videoDriver.find_element(By.TAG_NAME, "body")
+        page = self.driver.find_element(By.TAG_NAME, "body")
         page.send_keys(Keys.END)
         page.send_keys(Keys.PAGE_DOWN)
         time.sleep(1)
 
         try:
-            WebDriverWait(self.videoDriver, 30).until(
+            WebDriverWait(self.driver, 30).until(
                 EC.presence_of_element_located((By.XPATH, commentsXPath))
             )
         except TimeoutException:
-            timeoutSoup = BeautifulSoup(self.videoDriver.page_source, "html.parser")
+            timeoutSoup = BeautifulSoup(self.driver.page_source, "html.parser")
             with open("output/temp.html", "w") as f:
                 f.write(timeoutSoup.prettify())
-            self.videoDriver.save_screenshot("output/page.png")
+            self.driver.save_screenshot("output/page.png")
             raise ParseFailedException("Parse Failed: Timeout while waiting for comments to load") """
 
-        soup = BeautifulSoup(self.videoDriver.page_source, "html.parser")
+        soup = BeautifulSoup(self.driver.page_source, "html.parser")
 
         likeButton = soup.find("like-button-view-model")
         vidLikes = likeButton.find(class_="yt-spec-button-shape-next__button-text-content").text
@@ -177,30 +233,24 @@ class youtubeScanner:
         return youtubeVideoInfo(title=vidTitle, date=vidDate, views=vidViews, likes=vidLikes, URL=vidURL)
 
     def __scanVideos(self):
-        soup = BeautifulSoup(self.videoDriver.page_source, "html.parser")
-
-        videos = soup.find(id="contents", class_="style-scope ytd-rich-grid-renderer")
+        videos = self.videoSoup.find(id="contents", class_="style-scope ytd-rich-grid-renderer")
         videoLinks = videos.find_all("a", id="video-title-link")
 
-        counter = 1
-        for link in videoLinks:
+        counter = Counter(len(videoLinks))
+        for link in videoLinks[:3]: #reminder to remove list slice after implementing shorts and livestream scrapping
+            counter.inc()
             fullLink = baseURL + link["href"]
-            numLinks = len(videoLinks)
-            digits = math.floor(math.log10(numLinks)+1)
-            renderedCounter = str(counter).zfill(digits)
-            print(f"({renderedCounter}/{numLinks}) Scanning {fullLink}...", end=" ")
+            print(f"{counter} Scanning {fullLink}...", end=" ")
             self.data.videos.append(self.__scanVideo(fullLink))
-            counter += 1
 
     def scan(self):
         print("Initiating Scan...")
-        aboutSoup = BeautifulSoup(self.aboutDriver.page_source, "html.parser")
-
+        
         #Channel Details
-        self.data.title = aboutSoup.find("yt-formatted-string", class_="style-scope ytd-channel-name").text
-        self.data.about = aboutSoup.find(id="description-container").text.strip()
+        self.data.title = self.aboutSoup.find("yt-formatted-string", class_="style-scope ytd-channel-name").text
+        self.data.about = self.aboutSoup.find(id="description-container").text.strip()
 
-        details = aboutSoup.find(id="additional-info-container")
+        details = self.aboutSoup.find(id="additional-info-container")
         detailsList = details.text.split("\n")
         for e in detailsList:
             if e.find("subscriber") != -1:
@@ -213,14 +263,16 @@ class youtubeScanner:
                 self.data.joinDate = e.replace("Joined ", "")
 
         #External Social Media Links
-        linkContainer = aboutSoup.find(id="link-list-container")
+        linkContainer = self.aboutSoup.find(id="link-list-container")
         links = linkContainer.find_all("yt-channel-external-link-view-model")
 
         for link in links:
             linkParts = link.find_all("span")
             self.data.socmedLinks.append((linkParts[0].text, linkParts[1].text))
 
-        self.__scanVideos()
+        #Video Pages
+        if self.videosFound:
+            self.__scanVideos()
         
         print("Scan Done.")
             
@@ -251,6 +303,8 @@ class youtubeScanner:
             #print(f"Comments: {vid.commentCount}")
             print(vid.URL)
             print() """
+        
+        #Shorts
 
     def record(self):
         output = "output"
@@ -283,3 +337,6 @@ class youtubeScanner:
                 sanitizedTitle = vid.title.replace('\"', '\"\"')
                 f.write(f"{counter},\"{sanitizedTitle}\",\"{vid.date}\",\"{vid.views}\",\"{vid.likes}\",{vid.URL}\n")
                 counter += 1
+
+    def close(self):
+        self.driver.close()
