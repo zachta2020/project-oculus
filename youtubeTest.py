@@ -4,8 +4,9 @@ target1 = "alfabusa"
 target2 = "AsureLuna"
 target3 = "NarrativeDeclaration"
 target4 = "PhilipDeFranco"
+target5 = "AtrocityGuide"
 
-target = target1
+target = target4
 
 test = youtubeScanner(target)
 test.open()
@@ -14,8 +15,7 @@ test.scan()
 print()
 test.display()
 print()
-"""
-test.record() """
+test.record()
 print(f"Closing {target}...")
 test.aboutDriver.close()
 test.videoDriver.close()
