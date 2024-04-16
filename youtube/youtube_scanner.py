@@ -111,8 +111,10 @@ class youtubeScanner:
                     page.send_keys(Keys.END)
                     time.sleep(1)
 
-                for title in titles:
-                    print(title.text)
+                
+            """ titles = self.driver.find_elements(By.ID, "video-title")
+            for title in titles[:5]:
+                    print(title.text) """
 
             if pageName == "/videos":
                 self.videoSoup = BeautifulSoup(self.driver.page_source, "html.parser")
@@ -178,7 +180,7 @@ class youtubeScanner:
         titleXPath = '//*[@id="title"]/h1/yt-formatted-string'
         commentsXPath = '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-watch-flexy/div[5]/div[1]/div/div[2]/ytd-comments/ytd-item-section-renderer/div[1]/ytd-comments-header-renderer/div[1]/div[1]/h2/yt-formatted-string'
 
-        WebDriverWait(self.driver, 5).until(
+        WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.XPATH, titleXPath))
             )
 
@@ -231,17 +233,86 @@ class youtubeScanner:
         vidCommentCount = comments.find(id="leading-section").text.strip().replace(" Comments", "") """
 
         return youtubeVideoInfo(title=vidTitle, date=vidDate, views=vidViews, likes=vidLikes, URL=vidURL)
+    
+    def __scanShort(self, shortURL):
+        self.driver.get(shortURL)
 
-    def __scanVideos(self):
-        videos = self.videoSoup.find(id="contents", class_="style-scope ytd-rich-grid-renderer")
+        titleClassName = "title.style-scope.reel-player-header-renderer"
+
+        try:
+            WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((By.CLASS_NAME, titleClassName))
+                )
+        except TimeoutException:
+            self.driver.save_screenshot("output/page.png")
+            raise Exception("Title not found.")
+        
+        moreActionsButton = self.driver.find_element(By.XPATH, "//yt-button-shape/button[@aria-label='More actions']")
+        moreActionsButton.click()
+        time.sleep(3)
+
+        #self.driver.save_screenshot("output/page0.png")
+
+        descriptionOption = self.driver.find_element(By.XPATH, "//*[@id='items']/ytd-menu-service-item-renderer[1]/tp-yt-paper-item")
+        descriptionOption.click()
+        time.sleep(1)
+
+        #self.driver.save_screenshot("output/page.png")
+        
+        shortTitle = self.driver.find_element(By.CLASS_NAME, titleClassName).text
+
+        print(shortTitle)
+
+        soup = BeautifulSoup(self.driver.page_source, "html.parser")
+        """ with open("output/shortsPage.html", "w") as f:
+            f.write(soup.prettify()) """
+        
+        factoids = soup.find_all(class_="YtwFactoidRendererHost")
+
+        #print(len(factoids))
+
+        #the factoids are stored in the order of Likes, Views, and then Date in the list
+
+        shortInfo = []
+        for fact in factoids:
+            firstHalf = fact.find(class_="YtwFactoidRendererValue").text
+            secondHalf = fact.find(class_="YtwFactoidRendererLabel").text
+            shortInfo.append((firstHalf, secondHalf))
+
+            """ print("===")
+            print(f"{firstHalf} {secondHalf}")
+            print("===") """
+
+        shortDate = f"{shortInfo[2][0]}, {shortInfo[2][1]}"
+        shortViews = shortInfo[1][0]
+        shortLikes = shortInfo[0][0]
+
+        return youtubeVideoInfo(title=shortTitle, date=shortDate, views=shortViews, likes=shortLikes, URL=shortURL)
+
+    def __scanPage(self, pageName):
+        if pageName == "videos":
+            videos = self.videoSoup.find(id="contents", class_="style-scope ytd-rich-grid-renderer")
+        elif pageName == "shorts":
+            videos = self.shortsSoup.find(id="contents", class_="style-scope ytd-rich-grid-renderer")
+        elif pageName == "streams":
+            videos = self.liveSoup.find(id="contents", class_="style-scope ytd-rich-grid-renderer")
+
         videoLinks = videos.find_all("a", id="video-title-link")
+        if len(videoLinks) == 0:
+            videoLinks = videos.find_all("a", id="thumbnail")
 
+        print(f"Total Found: {len(videoLinks)}")
         counter = Counter(len(videoLinks))
-        for link in videoLinks[:3]: #reminder to remove list slice after implementing shorts and livestream scrapping
+        for link in videoLinks: #reminder to remove list slice after implementing shorts and livestream scrapping
             counter.inc()
             fullLink = baseURL + link["href"]
             print(f"{counter} Scanning {fullLink}...", end=" ")
-            self.data.videos.append(self.__scanVideo(fullLink))
+            if pageName == "videos":
+                self.data.videos.append(self.__scanVideo(fullLink))
+            elif pageName == "shorts":
+                self.data.shorts.append(self.__scanShort(fullLink))
+            elif pageName == "streams":
+                self.data.livestreams.append(self.__scanVideo(fullLink))
 
     def scan(self):
         print("Initiating Scan...")
@@ -272,7 +343,14 @@ class youtubeScanner:
 
         #Video Pages
         if self.videosFound:
-            self.__scanVideos()
+            print("Scanning Videos...")
+            self.__scanPage("videos")
+        if self.shortsFound:
+            print("Scanning Shorts...")
+            self.__scanPage("shorts")
+        if self.liveFound:
+            print("Scanning Livestreams...")
+            self.__scanPage("streams")
         
         print("Scan Done.")
             
@@ -282,7 +360,8 @@ class youtubeScanner:
         print(f"Channel Title: {self.data.title}")
         print(f"About: {self.data.about}\n")
         print(f"Subscribers: {self.data.subCount}")
-        print(f"Videos: {len(self.data.videos)}/{self.data.vidCount}")
+        totalVidsFound = len(self.data.videos) + len(self.data.shorts) + len(self.data.livestreams)
+        print(f"Videos: {totalVidsFound}/{self.data.vidCount}")
         print(f"Views: {self.data.viewCount}")
         print(f"Join Date: {self.data.joinDate}\n")
 
@@ -293,18 +372,43 @@ class youtubeScanner:
         else:
             print("No External Links Detected.")
 
-        #Videos
-        """ print("\n===VIDEOS===")
-        for vid in self.data.videos:
-            print(f"Title: {vid.title}")
-            print(f"Date: {vid.date}")
-            print(f"Views: {vid.views}")
-            print(f"Likes: {vid.likes}")
-            #print(f"Comments: {vid.commentCount}")
-            print(vid.URL)
-            print() """
+        recent = 5
+
+        """ #Videos
+        if self.videosFound:
+            print("\n===VIDEOS===")
+            for vid in self.data.videos[:recent]:
+                print(f"Title: {vid.title}")
+                print(f"Date: {vid.date}")
+                print(f"Views: {vid.views}")
+                print(f"Likes: {vid.likes}")
+                #print(f"Comments: {vid.commentCount}")
+                print(vid.URL)
+                print() """
         
-        #Shorts
+        """ #Shorts
+        if self.shortsFound:
+            print("\n===SHORTS===")
+            for vid in self.data.shorts[:recent]:
+                print(f"Title: {vid.title}")
+                print(f"Date: {vid.date}")
+                print(f"Views: {vid.views}")
+                print(f"Likes: {vid.likes}")
+                #print(f"Comments: {vid.commentCount}")
+                print(vid.URL)
+                print() """
+
+        """ #Livestreams
+        if self.liveFound:
+            print("\n===STREAMS===")
+            for vid in self.data.livestreams[:recent]:
+                print(f"Title: {vid.title}")
+                print(f"Date: {vid.date}")
+                print(f"Views: {vid.views}")
+                print(f"Likes: {vid.likes}")
+                #print(f"Comments: {vid.commentCount}")
+                print(vid.URL)
+                print() """
 
     def record(self):
         output = "output"
@@ -319,7 +423,10 @@ class youtubeScanner:
             sanitizedAbout = self.data.about.replace('\"', '\"\"')
             f.write(f"About,\"{sanitizedAbout}\"\n")
             f.write(f"Subscribers,\"{self.data.subCount}\"\n")
-            f.write(f"Videos,\"{self.data.vidCount}\"\n")
+            f.write(f"Total Videos,\"{self.data.vidCount}\"\n")
+            f.write(f"Videos,\"{len(self.data.videos)}\"\n")
+            f.write(f"Shorts,\"{len(self.data.shorts)}\"\n")
+            f.write(f"Livestreams,\"{len(self.data.livestreams)}\"\n")
             f.write(f"Views,\"{self.data.viewCount}\"\n")
             f.write(f"Join Date,\"{self.data.joinDate}\"\n")
 
@@ -330,13 +437,32 @@ class youtubeScanner:
             else:
                 f.write("No External Links Detected\n")
 
-            f.write("VIDEOS\n")
-            f.write("Video,Title,Date,Views,Likes,URL\n")
-            counter = 1
-            for vid in self.data.videos:
-                sanitizedTitle = vid.title.replace('\"', '\"\"')
-                f.write(f"{counter},\"{sanitizedTitle}\",\"{vid.date}\",\"{vid.views}\",\"{vid.likes}\",{vid.URL}\n")
-                counter += 1
+            if len(self.data.videos) > 0:
+                f.write("VIDEOS\n")
+                f.write("Video,Title,Date,Views,Likes,URL\n")
+                counter = 1
+                for vid in self.data.videos:
+                    sanitizedTitle = vid.title.replace('\"', '\"\"')
+                    f.write(f"{counter},\"{sanitizedTitle}\",\"{vid.date}\",\"{vid.views}\",\"{vid.likes}\",{vid.URL}\n")
+                    counter += 1
+
+            if len(self.data.shorts) > 0:
+                f.write("SHORTS\n")
+                f.write("Short,Title,Date,Views,Likes,URL\n")
+                counter = 1
+                for vid in self.data.shorts:
+                    sanitizedTitle = vid.title.replace('\"', '\"\"')
+                    f.write(f"{counter},\"{sanitizedTitle}\",\"{vid.date}\",\"{vid.views}\",\"{vid.likes}\",{vid.URL}\n")
+                    counter += 1
+
+            if len(self.data.livestreams) > 0:
+                f.write("LIVESTREAMS\n")
+                f.write("Stream,Title,Date,Views,Likes,URL\n")
+                counter = 1
+                for vid in self.data.livestreams:
+                    sanitizedTitle = vid.title.replace('\"', '\"\"')
+                    f.write(f"{counter},\"{sanitizedTitle}\",\"{vid.date}\",\"{vid.views}\",\"{vid.likes}\",{vid.URL}\n")
+                    counter += 1
 
     def close(self):
         self.driver.close()
