@@ -1,4 +1,5 @@
 from youtube.youtube_scanner import youtubeScanner
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 
 targets = [
     "alfabusa", #0
@@ -11,17 +12,26 @@ targets = [
     "ffxiv", #7
  ]
 
-target = targets[0]
+target = targets[3]
 
-test = youtubeScanner(target)
-test.open()
-""" print()
-test.scan()
-print()
-test.display()
-print()
-test.record() """
-print(f"Closing {target}...")
-test.close()
+try:
+    test = youtubeScanner(target)
+    test.open()
+    print()
+    test.scan()
+    print()
+    test.display()
+    print()
+    test.record()
+    print(f"Closing {target}...")
+    test.close()
 
-print("Done.")
+    print("Done.")
+except NoSuchElementException as e:
+    test.driver.save_screenshot("output/state.png")
+    print(e.msg)
+    print(e.stacktrace)
+except TimeoutException as e:
+    test.driver.save_screenshot("output/state.png")
+    print(e.msg)
+    print(e.stacktrace)
