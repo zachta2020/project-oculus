@@ -23,6 +23,7 @@ from youtube.exceptions import ParseFailedException
 from helpers.counter import Counter
 
 baseURL = "https://www.youtube.com"
+youtubeLoginURL = "https://accounts.google.com/v3/signin/identifier?continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26app%3Ddesktop%26hl%3Den%26next%3Dhttps%253A%252F%252Fwww.youtube.com%252F&ec=65620&hl=en&ifkv=ARZ0qKL3Zi_iaGh8a075_-EsMVzrH0oRHQ6DnZ5g2MMzV_QFR7yTJvtKURHG-8DFIj54YOixf5VfZQ&passive=true&service=youtube&uilel=3&flowName=GlifWebSignIn&flowEntry=ServiceLogin&dsh=S-1425625490%3A1713818954776627&theme=mn&ddm=0"
 
 #YouTube Identifiers
 aboutContainerID = "about-container"
@@ -70,6 +71,19 @@ class youtubeScanner:
         options.add_argument("--headless=new")
         self.driver = webdriver.Chrome(options=options)
 
+        #login to service account
+        email = ""
+        password = ""
+        with open("secret/youtube_service.txt", "r") as f:
+            email = f.readline().strip()
+            password = f.readline()
+
+        print(f"Email: {email}\nPass: {password}")
+
+        #self.driver.get(youtubeLoginURL)
+
+
+
     def getFullURL(self):
         if self.target.find(baseURL) == -1:
             return f"{baseURL}/@{self.target}"
@@ -102,12 +116,14 @@ class youtubeScanner:
                 titles = []
 
                 #scroll down until the oldest video title is found
+                counter = 1
                 while True:
                     titles = self.driver.find_elements(By.ID, "video-title")
                     lastTitle = titles[len(titles)-1].text
-                    #print(lastTitle)
                     if lastTitle == oldestTitle:
                         break
+                    print(f"Scroll {counter}...")
+                    counter += 1
                     page.send_keys(Keys.END)
                     time.sleep(1)
 
@@ -238,16 +254,15 @@ class youtubeScanner:
         self.driver.get(shortURL)
 
         titleClassName = "title.style-scope.reel-player-header-renderer"
+        moreActionsXPath = "//yt-button-shape/button[@aria-label='More actions']"
 
-        try:
-            WebDriverWait(self.driver, 5).until(
-                    EC.presence_of_element_located((By.CLASS_NAME, titleClassName))
-                )
-        except TimeoutException:
-            self.driver.save_screenshot("output/page.png")
-            raise Exception("Title not found.")
+
+        WebDriverWait(self.driver, 5).until(
+                EC.presence_of_element_located((By.XPATH, moreActionsXPath))
+            )
+
         
-        moreActionsButton = self.driver.find_element(By.XPATH, "//yt-button-shape/button[@aria-label='More actions']")
+        moreActionsButton = self.driver.find_element(By.XPATH, moreActionsXPath)
         moreActionsButton.click()
         time.sleep(3)
 
@@ -306,13 +321,21 @@ class youtubeScanner:
         for link in videoLinks: #reminder to remove list slice after implementing shorts and livestream scrapping
             counter.inc()
             fullLink = baseURL + link["href"]
-            print(f"{counter} Scanning {fullLink}...", end=" ")
-            if pageName == "videos":
-                self.data.videos.append(self.__scanVideo(fullLink))
-            elif pageName == "shorts":
-                self.data.shorts.append(self.__scanShort(fullLink))
-            elif pageName == "streams":
-                self.data.livestreams.append(self.__scanVideo(fullLink))
+            
+            while True:
+                print(f"{counter} Scanning {fullLink}...", end=" ")
+                try:
+                    if pageName == "videos":
+                        self.data.videos.append(self.__scanVideo(fullLink))
+                    elif pageName == "shorts":
+                        self.data.shorts.append(self.__scanShort(fullLink))
+                    elif pageName == "streams":
+                        self.data.livestreams.append(self.__scanVideo(fullLink))
+                    break
+                except NoSuchElementException as e:
+                    print("SCAN FAILED: UNABLE TO FIND ELEMENT. Retrying...")
+                except TimeoutException:
+                    print("SCAN FAILED: TIMEOUT. Retrying...")
 
     def scan(self):
         print("Initiating Scan...")
