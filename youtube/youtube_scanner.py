@@ -264,7 +264,7 @@ class youtubeScanner:
         soup = BeautifulSoup(self.driver.page_source, "html.parser")
 
         likeButton = soup.find("like-button-view-model")
-        vidLikes = likeButton.find(class_="yt-spec-button-shape-next__button-text-content").text
+        vidLikes = likeButton.find(title="I like this")["aria-label"].split(" ")[5]
 
         """ comments = soup.find("ytd-comments", id="comments")
         vidCommentCount = comments.find(id="leading-section").text.strip().replace(" Comments", "") """
@@ -339,7 +339,7 @@ class youtubeScanner:
 
         print(f"Total Found: {len(videoLinks)}")
         counter = Counter(len(videoLinks))
-        for link in videoLinks: #reminder to remove list slice after implementing shorts and livestream scrapping
+        for link in videoLinks[:5]: #reminder to remove list slice after implementing shorts and livestream scrapping
             counter.inc()
             fullLink = baseURL + link["href"]
             retryAttempts = 5
