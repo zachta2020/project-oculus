@@ -71,16 +71,37 @@ class youtubeScanner:
         options.add_argument("--headless=new")
         self.driver = webdriver.Chrome(options=options)
 
-        #login to service account
+        """ #login to service account
         email = ""
         password = ""
         with open("secret/youtube_service.txt", "r") as f:
             email = f.readline().strip()
             password = f.readline()
 
-        print(f"Email: {email}\nPass: {password}")
+        print(f"Email: {email}\nPass: {password}\n")
 
-        #self.driver.get(youtubeLoginURL)
+        self.driver.get(youtubeLoginURL)
+        time.sleep(5)
+        self.driver.find_element(By.TAG_NAME, "input").send_keys(email)
+        buttons = self.driver.find_elements(By.TAG_NAME, "button")
+
+        print(len(buttons))
+        print(buttons[2].text)
+
+        self.driver.save_screenshot("output/loginStep1.png")
+
+        buttons[2].click() #Next Button
+        time.sleep(5)
+
+        self.driver.save_screenshot("output/loginStep2.png")
+
+        self.driver.find_elements(By.TAG_NAME, "input")[1].send_keys(password)
+
+        buttons = self.driver.find_elements(By.TAG_NAME, "button")
+        buttons[2].click() #Next Button
+        time.sleep(5)
+
+        self.driver.save_screenshot("output/loginResult.png") """
 
 
 
@@ -321,6 +342,7 @@ class youtubeScanner:
         for link in videoLinks: #reminder to remove list slice after implementing shorts and livestream scrapping
             counter.inc()
             fullLink = baseURL + link["href"]
+            retryAttempts = 5
             
             while True:
                 print(f"{counter} Scanning {fullLink}...", end=" ")
@@ -333,9 +355,25 @@ class youtubeScanner:
                         self.data.livestreams.append(self.__scanVideo(fullLink))
                     break
                 except NoSuchElementException as e:
-                    print("SCAN FAILED: UNABLE TO FIND ELEMENT. Retrying...")
+                    if retryAttempts > 0:
+                        print("SCAN FAILED: UNABLE TO FIND ELEMENT. Retrying...")
+                        retryAttempts -= 1
+                        continue
                 except TimeoutException:
-                    print("SCAN FAILED: TIMEOUT. Retrying...")
+                    if retryAttempts > 0:
+                        print("SCAN FAILED: TIMEOUT. Retrying...")
+                        retryAttempts -= 1
+                        continue
+
+                if retryAttempts == 0:
+                    print("CANNOT SCAN VIDEO. Proceeding...")
+                    if pageName == "videos":
+                        self.data.videos.append(youtubeVideoInfo(title="UNKNOWN", URL=fullLink))
+                    elif pageName == "shorts":
+                        self.data.shorts.append(youtubeVideoInfo(title="UNKNOWN", URL=fullLink))
+                    elif pageName == "streams":
+                        self.data.livestreams.append(youtubeVideoInfo(title="UNKNOWN", URL=fullLink))
+                    break
 
     def scan(self):
         print("Initiating Scan...")
