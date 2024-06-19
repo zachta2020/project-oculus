@@ -339,7 +339,7 @@ class youtubeScanner:
 
         print(f"Total Found: {len(videoLinks)}")
         counter = Counter(len(videoLinks))
-        for link in videoLinks[:5]: #reminder to remove list slice after implementing shorts and livestream scrapping
+        for link in videoLinks: #reminder to remove list slice after implementing shorts and livestream scrapping
             counter.inc()
             fullLink = baseURL + link["href"]
             retryAttempts = 5
