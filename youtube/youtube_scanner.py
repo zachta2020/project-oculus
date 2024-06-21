@@ -29,14 +29,31 @@ youtubeLoginURL = "https://accounts.google.com/v3/signin/identifier?continue=htt
 aboutContainerID = "about-container"
 
 #YouTube Information Schema
-class youtubeVideoInfo:
-    def __init__(self, title=None, date=None, views=None, likes=None, commentCount=None, URL=None):
+class commonVideoInfo:
+    def __init__(self, title=None, date=None, likes=None, URL=None):
         self.title = title
         self.date = date
-        self.views = views
         self.likes = likes
-        self.commentCount = commentCount
         self.URL = URL
+
+class youtubeVideoInfo(commonVideoInfo):
+    """Models information for a Normal Video, a Short, or a Livestream VOD"""
+    def __init__(self, title=None, date=None, views=None, likes=None, commentCount=None, URL=None):
+        super().__init__(title, date, likes, URL)
+        self.views = views
+        self.commentCount = commentCount
+
+class youtubeCurrentStreamInfo(commonVideoInfo):
+    """Models a stream in progress at the time of scanning"""
+    def __init__(self, title=None, date=None, currentViewers=None, likes=None, URL=None):
+        super().__init__(title, date, likes, URL)
+        self.currentViewers = currentViewers
+
+class youtubeScheduledStreamInfo(commonVideoInfo):
+    """Models a stream pre-planned at the time of scanning"""
+    def __init__(self, title=None, date=None, waiting=None, likes=None, URL=None):
+        super().__init__(title, date, likes, URL)
+        self.waiting = waiting
 
 class youtubeChannelInfo:
     def __init__(self):
@@ -49,8 +66,11 @@ class youtubeChannelInfo:
         self.socmedLinks = []
         self.videos = []
         self.shorts = []
-        self.livestreams = []
+        self.livestreamVODs = []
+        self.currentLivestreams = []
+        self.scheduledLivestreams = []
 
+#Youtube Scanning Object
 class youtubeScanner:
     def __init__(self, target):
         self.target = target
@@ -324,6 +344,44 @@ class youtubeScanner:
         shortLikes = shortInfo[0][0]
 
         return youtubeVideoInfo(title=shortTitle, date=shortDate, views=shortViews, likes=shortLikes, URL=shortURL)
+    
+    def __scanLivestream(self, streamURL, counter):
+        self.driver.get(streamURL)
+
+        titleXPath = '//*[@id="title"]/h1/yt-formatted-string'
+
+        WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.XPATH, titleXPath))
+            )
+
+        expandButton = self.driver.find_element(By.ID, "expand")
+        expandButton.click()
+        time.sleep(1)
+
+        vidTitle = self.driver.find_element(By.XPATH, titleXPath).text
+        print(vidTitle)
+
+        watchInfoString = self.driver.find_element(By.CLASS_NAME, "style-scope.ytd-watch-info-text").text.strip()
+        watchInfoList = watchInfoString.split("  ")
+
+        #print(watchInfoList)
+
+        vidDate = watchInfoList[1]
+        vidViews = watchInfoList[0].replace(" views", "")
+
+        soup = BeautifulSoup(self.driver.page_source, "html.parser")
+
+        likeButton = soup.find("like-button-view-model")
+        vidLikes = likeButton.find(title="I like this")["aria-label"].split(" ")[5]
+
+        #self.driver.save_screenshot(f"output/streamScreenshot{counter.current}.png")#DEBUG
+
+        if vidDate.find("Scheduled") != -1: #if the livestream is pre-planned
+            return youtubeScheduledStreamInfo(title=vidTitle, date=vidDate, waiting=vidViews, likes=vidLikes, URL=streamURL)
+        elif vidDate.find("Started") != -1: #if the livestream is currently airing
+            return youtubeCurrentStreamInfo(title=vidTitle, date=vidDate, currentViewers=vidViews, likes=vidLikes, URL=streamURL)
+        else: #if it's a stream vod
+            return youtubeVideoInfo(title=vidTitle, date=vidDate, views=vidViews, likes=vidLikes, URL=streamURL)
 
     def __scanPage(self, pageName):
         if pageName == "videos":
@@ -339,7 +397,7 @@ class youtubeScanner:
 
         print(f"Total Found: {len(videoLinks)}")
         counter = Counter(len(videoLinks))
-        for link in videoLinks: #reminder to remove list slice after implementing shorts and livestream scrapping
+        for link in videoLinks:
             counter.inc()
             fullLink = baseURL + link["href"]
             retryAttempts = 5
@@ -352,7 +410,14 @@ class youtubeScanner:
                     elif pageName == "shorts":
                         self.data.shorts.append(self.__scanShort(fullLink))
                     elif pageName == "streams":
-                        self.data.livestreams.append(self.__scanVideo(fullLink))
+                        streamInfo = self.__scanLivestream(fullLink, counter)
+                        print(streamInfo.__class__.__name__) #DEBUG
+                        if streamInfo.__class__.__name__ == "youtubeVideoInfo":
+                            self.data.livestreamVODs.append(streamInfo)
+                        elif streamInfo.__class__.__name__ == "youtubeCurrentStreamInfo":
+                            self.data.currentLivestreams.append(streamInfo)
+                        elif streamInfo.__class__.__name__ == "youtubeScheduledStreamInfo":
+                            self.data.scheduledLivestreams.append(streamInfo)
                     break
                 except NoSuchElementException as e:
                     if retryAttempts > 0:
@@ -402,6 +467,10 @@ class youtubeScanner:
             linkParts = link.find_all("span")
             self.data.socmedLinks.append((linkParts[0].text, linkParts[1].text))
 
+        #DEBUG
+        self.videosFound = False
+        self.shortsFound = False
+
         #Video Pages
         if self.videosFound:
             print("Scanning Videos...")
@@ -421,7 +490,7 @@ class youtubeScanner:
         print(f"Channel Title: {self.data.title}")
         print(f"About: {self.data.about}\n")
         print(f"Subscribers: {self.data.subCount}")
-        totalVidsFound = len(self.data.videos) + len(self.data.shorts) + len(self.data.livestreams)
+        totalVidsFound = len(self.data.videos) + len(self.data.shorts) + len(self.data.livestreamVODs) + len(self.data.currentLivestreams) + len(self.data.scheduledLivestreams)
         print(f"Videos: {totalVidsFound}/{self.data.vidCount}")
         print(f"Views: {self.data.viewCount}")
         print(f"Join Date: {self.data.joinDate}\n")
@@ -487,7 +556,7 @@ class youtubeScanner:
             f.write(f"Total Videos,\"{self.data.vidCount}\"\n")
             f.write(f"Videos,\"{len(self.data.videos)}\"\n")
             f.write(f"Shorts,\"{len(self.data.shorts)}\"\n")
-            f.write(f"Livestreams,\"{len(self.data.livestreams)}\"\n")
+            f.write(f"Livestreams,\"{len(self.data.livestreamVODs) + len(self.data.currentLivestreams) + len(self.data.scheduledLivestreams)}\"\n")
             f.write(f"Views,\"{self.data.viewCount}\"\n")
             f.write(f"Join Date,\"{self.data.joinDate}\"\n")
 
@@ -516,11 +585,29 @@ class youtubeScanner:
                     f.write(f"{counter},\"{sanitizedTitle}\",\"{vid.date}\",\"{vid.views}\",\"{vid.likes}\",{vid.URL}\n")
                     counter += 1
 
-            if len(self.data.livestreams) > 0:
-                f.write("LIVESTREAMS\n")
+            if len(self.data.scheduledLivestreams) > 0:
+                f.write("SCHEDULED LIVESTREAMS\n")
+                f.write("Stream,Title,Date,Waiting,Likes,URL\n")
+                counter = 1
+                for vid in self.data.scheduledLivestreams:
+                    sanitizedTitle = vid.title.replace('\"', '\"\"')
+                    f.write(f"{counter},\"{sanitizedTitle}\",\"{vid.date}\",\"{vid.waiting}\",\"{vid.likes}\",{vid.URL}\n")
+                    counter += 1
+
+            if len(self.data.currentLivestreams) > 0:
+                f.write("CURRENT LIVESTREAMS\n")
+                f.write("Stream,Title,Date,Current Viewers,Likes,URL\n")
+                counter = 1
+                for vid in self.data.currentLivestreams:
+                    sanitizedTitle = vid.title.replace('\"', '\"\"')
+                    f.write(f"{counter},\"{sanitizedTitle}\",\"{vid.date}\",\"{vid.currentViewers}\",\"{vid.likes}\",{vid.URL}\n")
+                    counter += 1
+
+            if len(self.data.livestreamVODs) > 0:
+                f.write("LIVESTREAM VODS\n")
                 f.write("Stream,Title,Date,Views,Likes,URL\n")
                 counter = 1
-                for vid in self.data.livestreams:
+                for vid in self.data.livestreamVODs:
                     sanitizedTitle = vid.title.replace('\"', '\"\"')
                     f.write(f"{counter},\"{sanitizedTitle}\",\"{vid.date}\",\"{vid.views}\",\"{vid.likes}\",{vid.URL}\n")
                     counter += 1
