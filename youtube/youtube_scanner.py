@@ -16,11 +16,11 @@ from bs4 import BeautifulSoup
 
 import time
 import os
-from datetime import date
-import math
+from datetime import date, timedelta
 
 from youtube.exceptions import ParseFailedException
 from helpers.counter import Counter
+from youtube.helpers import relative_to_absolute
 
 baseURL = "https://www.youtube.com"
 youtubeLoginURL = "https://accounts.google.com/v3/signin/identifier?continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26app%3Ddesktop%26hl%3Den%26next%3Dhttps%253A%252F%252Fwww.youtube.com%252F&ec=65620&hl=en&ifkv=ARZ0qKL3Zi_iaGh8a075_-EsMVzrH0oRHQ6DnZ5g2MMzV_QFR7yTJvtKURHG-8DFIj54YOixf5VfZQ&passive=true&service=youtube&uilel=3&flowName=GlifWebSignIn&flowEntry=ServiceLogin&dsh=S-1425625490%3A1713818954776627&theme=mn&ddm=0"
@@ -353,6 +353,8 @@ class youtubeScanner:
         WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.XPATH, titleXPath))
             )
+        
+        self.driver.save_screenshot("output/temp.png")
 
         expandButton = self.driver.find_element(By.ID, "expand")
         expandButton.click()
@@ -367,20 +369,32 @@ class youtubeScanner:
         #print(watchInfoList)
 
         vidDate = watchInfoList[1]
-        vidViews = watchInfoList[0].replace(" views", "")
+        vidViews = watchInfoList[0]
 
         soup = BeautifulSoup(self.driver.page_source, "html.parser")
 
         likeButton = soup.find("like-button-view-model")
         vidLikes = likeButton.find(title="I like this")["aria-label"].split(" ")[5]
 
-        #self.driver.save_screenshot(f"output/streamScreenshot{counter.current}.png")#DEBUG
-
         if vidDate.find("Scheduled") != -1: #if the livestream is pre-planned
+            vidViews = vidViews.replace(" waiting", "")
+            vidDate = vidDate.replace("Scheduled for ", "")
             return youtubeScheduledStreamInfo(title=vidTitle, date=vidDate, waiting=vidViews, likes=vidLikes, URL=streamURL)
         elif vidDate.find("Started") != -1: #if the livestream is currently airing
+            vidViews = vidViews.replace(" watching now", "")
+            vidDate = vidDate.replace("Started streaming ", "")
+            if vidDate.find("ago") != -1:
+                vidDate = relative_to_absolute(vidDate)
+            else:
+                vidDate = vidDate.replace("on ", "")
             return youtubeCurrentStreamInfo(title=vidTitle, date=vidDate, currentViewers=vidViews, likes=vidLikes, URL=streamURL)
         else: #if it's a stream vod
+            vidViews = vidViews.replace(" views", "")
+            vidDate = vidDate.replace("Streamed live ", "")
+            if vidDate.find("ago") != -1:
+                vidDate = relative_to_absolute(vidDate)
+            else:
+                vidDate = vidDate.replace("on ", "")
             return youtubeVideoInfo(title=vidTitle, date=vidDate, views=vidViews, likes=vidLikes, URL=streamURL)
 
     def __scanPage(self, pageName):
@@ -411,7 +425,6 @@ class youtubeScanner:
                         self.data.shorts.append(self.__scanShort(fullLink))
                     elif pageName == "streams":
                         streamInfo = self.__scanLivestream(fullLink, counter)
-                        print(streamInfo.__class__.__name__) #DEBUG
                         if streamInfo.__class__.__name__ == "youtubeVideoInfo":
                             self.data.livestreamVODs.append(streamInfo)
                         elif streamInfo.__class__.__name__ == "youtubeCurrentStreamInfo":
@@ -466,10 +479,6 @@ class youtubeScanner:
         for link in links:
             linkParts = link.find_all("span")
             self.data.socmedLinks.append((linkParts[0].text, linkParts[1].text))
-
-        #DEBUG
-        self.videosFound = False
-        self.shortsFound = False
 
         #Video Pages
         if self.videosFound:
