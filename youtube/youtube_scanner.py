@@ -167,7 +167,6 @@ class youtubeScanner:
                 while True:
                     titles = self.openDriver.find_elements(By.ID, "video-title")
                     lastTitle = titles[len(titles)-1].text
-                    #print(f"DEBUG: {lastTitle} - {oldestTitle}")
                     if lastTitle == oldestTitle:
                         break
                     print(f"Scroll {counter}...")
@@ -180,7 +179,6 @@ class youtubeScanner:
             for title in titles[:5]:
                     print(title.text) """
             
-            #print("DEBUG: Extracting HTML...")
 
             if pageName == "/videos":
                 self.videoSoup = BeautifulSoup(self.openDriver.page_source, "html.parser")
@@ -219,6 +217,8 @@ class youtubeScanner:
         print(f"Video Page Found: {self.videosFound}")
         print(f"Shorts Page Found: {self.shortsFound}")
         print(f"Live Page Found: {self.liveFound}")
+
+        #self.data.title = self.openDriver.find_element(By.CLASS_NAME, "yt-core-attributed-string.yt-core-attributed-string--white-space-pre-wrap")
 
         self.openDriver.get(fullURL + "/about")
 
@@ -424,7 +424,7 @@ class youtubeScanner:
 
         print(f"Total Found: {len(videoLinks)}")
         counter = Counter(len(videoLinks))
-        for link in videoLinks[:5]: #DEBUG
+        for link in videoLinks:
             counter.inc()
             fullLink = baseURL + link["href"]
             retryAttempts = 5
@@ -474,7 +474,7 @@ class youtubeScanner:
         print("Initiating Scan...")
         
         #Channel Details
-        self.data.title = self.aboutSoup.find("yt-formatted-string", class_="style-scope ytd-channel-name").text
+        self.data.title = self.aboutSoup.find("span", class_="yt-core-attributed-string yt-core-attributed-string--white-space-pre-wrap").text
         self.data.about = self.aboutSoup.find(id="description-container").text.strip()
 
         details = self.aboutSoup.find(id="additional-info-container")
