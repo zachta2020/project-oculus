@@ -14,7 +14,7 @@ targets = [
     "LofiGirl", #9
  ]
 
-target = targets[2]
+target = targets[8]
 
 try:
     test = youtubeScanner(target)
@@ -30,12 +30,12 @@ try:
 
     print("Done.")
 except NoSuchElementException as e:
-    test.driver.save_screenshot("output/NSEEState.png")
+    test.openDriver.save_screenshot("output/NSEEState.png")
     print(e.msg)
     print(e.stacktrace)
     print(e.screen)
 except TimeoutException as e:
-    test.driver.save_screenshot("output/TimeoutState.png")
+    test.openDriver.save_screenshot("output/TimeoutState.png")
     print(e.msg)
     print(e.stacktrace)
     print(e.screen)
