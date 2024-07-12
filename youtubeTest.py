@@ -14,7 +14,7 @@ targets = [
     "LofiGirl", #9
  ]
 
-target = targets[4]
+target = targets[0]
 
 try:
     test = youtubeScanner(target)
