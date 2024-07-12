@@ -44,8 +44,8 @@ class youtubeVideoInfo(commonVideoInfo):
         self.views = views
         self.commentCount = commentCount
 
-class youtubeCurrentStreamInfo(commonVideoInfo):
-    """Models a stream in progress at the time of scanning"""
+class youtubeCurrentInfo(commonVideoInfo):
+    """Models a stream in progress or a premiering video at the time of scanning"""
     def __init__(self, title=None, date=None, currentViewers=None, likes=None, URL=None):
         super().__init__(title, date, likes, URL)
         self.currentViewers = currentViewers
@@ -66,6 +66,7 @@ class youtubeChannelInfo:
         self.joinDate = None
         self.socmedLinks = []
         self.videos = []
+        self.premieringVideos = []
         self.scheduledVideos = []
         self.shorts = []
         self.livestreamVODs = []
@@ -299,6 +300,14 @@ class youtubeScanner:
             vidDate = watchInfoList[1].replace("Premieres ", "")
             vidWaiting = watchInfoList[0].replace(" waiting", "")
             return youtubeScheduledInfo(title=vidTitle, date=vidDate, waiting=vidWaiting, likes=vidLikes, URL=vidURL)
+        elif watchInfoList[1].find("Premiere in progress") != -1:
+            vidCurrentViewers = watchInfoList[0].replace(" watching now", "")
+            vidDate = watchInfoList[1].replace("Premiere in progress. Started ", "")
+            if vidDate.find("ago") != -1:
+                vidDate = relative_to_absolute(vidDate)
+            else:
+                vidDate = vidDate.replace("on ", "")
+            return youtubeCurrentInfo(title=vidTitle, date=vidDate, currentViewers=vidCurrentViewers, likes=vidLikes, URL=vidURL)
         else:
             vidDate = watchInfoList[1].replace("Premiered ", "")
             vidViews = watchInfoList[0].replace(" views", "")
@@ -400,7 +409,7 @@ class youtubeScanner:
                 vidDate = relative_to_absolute(vidDate)
             else:
                 vidDate = vidDate.replace("on ", "")
-            return youtubeCurrentStreamInfo(title=vidTitle, date=vidDate, currentViewers=vidViews, likes=vidLikes, URL=streamURL)
+            return youtubeCurrentInfo(title=vidTitle, date=vidDate, currentViewers=vidViews, likes=vidLikes, URL=streamURL)
         else: #if it's a stream vod
             vidViews = vidViews.replace(" views", "")
             vidDate = vidDate.replace("Streamed live ", "")
@@ -436,6 +445,8 @@ class youtubeScanner:
                         videoInfo = self.__scanVideo(fullLink)
                         if videoInfo.__class__.__name__ == "youtubeVideoInfo":
                             self.data.videos.append(videoInfo)
+                        elif videoInfo.__class__.__name__ == "youtubeCurrentInfo":
+                            self.data.premieringVideos.append(videoInfo)
                         elif videoInfo.__class__.__name__ == "youtubeScheduledInfo":
                             self.data.scheduledVideos.append(videoInfo)
                     elif pageName == "shorts":
@@ -444,7 +455,7 @@ class youtubeScanner:
                         streamInfo = self.__scanLivestream(fullLink, counter)
                         if streamInfo.__class__.__name__ == "youtubeVideoInfo":
                             self.data.livestreamVODs.append(streamInfo)
-                        elif streamInfo.__class__.__name__ == "youtubeCurrentStreamInfo":
+                        elif streamInfo.__class__.__name__ == "youtubeCurrentInfo":
                             self.data.currentLivestreams.append(streamInfo)
                         elif streamInfo.__class__.__name__ == "youtubeScheduledInfo":
                             self.data.scheduledLivestreams.append(streamInfo)
@@ -516,7 +527,7 @@ class youtubeScanner:
         print(f"Channel Title: {self.data.title}")
         print(f"About: {self.data.about}\n")
         print(f"Subscribers: {self.data.subCount}")
-        totalVidsFound = len(self.data.videos) + len(self.data.scheduledVideos) + len(self.data.shorts) + len(self.data.livestreamVODs) + len(self.data.currentLivestreams) + len(self.data.scheduledLivestreams)
+        totalVidsFound = len(self.data.videos) + len(self.data.premieringVideos) + len(self.data.scheduledVideos) + len(self.data.shorts) + len(self.data.livestreamVODs) + len(self.data.currentLivestreams) + len(self.data.scheduledLivestreams)
         print(f"Videos: {totalVidsFound}/{self.data.vidCount}")
         print(f"Views: {self.data.viewCount}")
         print(f"Join Date: {self.data.joinDate}\n")
@@ -600,6 +611,15 @@ class youtubeScanner:
                 for vid in self.data.scheduledVideos:
                     sanitizedTitle = vid.title.replace('\"', '\"\"')
                     f.write(f"{counter},\"{sanitizedTitle}\",\"{vid.date}\",\"{vid.waiting}\",\"{vid.likes}\",{vid.URL}\n")
+                    counter += 1
+
+            if len(self.data.premieringVideos) > 0:
+                f.write("PREMIERING VIDEOS\n")
+                f.write("Video,Title,Date,Waiting,Likes,URL\n")
+                counter = 1
+                for vid in self.data.premieringVideos:
+                    sanitizedTitle = vid.title.replace('\"', '\"\"')
+                    f.write(f"{counter},\"{sanitizedTitle}\",\"{vid.date}\",\"{vid.currentViewers}\",\"{vid.likes}\",{vid.URL}\n")
                     counter += 1
 
             if len(self.data.videos) > 0:
