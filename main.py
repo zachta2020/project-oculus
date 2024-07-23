@@ -30,7 +30,7 @@ def scanTarget(target, mode):
         print(f"Abandoning Scan of {scanner.target}")
 
     print(f"Closing {target}...")
-    scanner.driver.close()
+    scanner.close()
 
 """ if __name__ == "__main__":
     if len(sys.argv) < 2:
