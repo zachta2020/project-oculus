@@ -19,7 +19,7 @@ import time
 import os
 from datetime import date, timedelta
 
-from youtube.exceptions import ParseFailedException
+from common.exceptions import ParseFailedException
 from helpers.counter import Counter
 from youtube.helpers import relative_to_absolute
 
@@ -205,9 +205,12 @@ class youtubeScanner:
 
         self.openDriver.get(fullURL)
 
-        WebDriverWait(self.openDriver, 5).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "yt-tab-group-shape-wiz__tabs"))
-        )
+        try:
+            WebDriverWait(self.openDriver, 5).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "yt-tab-group-shape-wiz__tabs"))
+            )
+        except TimeoutException:
+            raise ParseFailedException("Parse Failed: User does not exist.")
 
         soup = BeautifulSoup(self.openDriver.page_source, "html.parser")
 

@@ -1,5 +1,5 @@
 from patreon.patreon_scanner import patreonScanner
-from patreon.exceptions import ParseFailedException
+from common.exceptions import ParseFailedException
 from youtube.youtube_scanner import youtubeScanner
 
 from selenium.common.exceptions import ElementNotInteractableException
