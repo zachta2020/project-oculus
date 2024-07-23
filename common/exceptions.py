@@ -1,6 +1,6 @@
 class ParseFailedException(Exception):
     """
-    Exception raised when youtubeScanner fails to parse target website.
+    Exception raised when a scanner fails to parse target website.
     
     """
     def __init__(self, message="Website parse has failed"):

@@ -18,7 +18,7 @@ import math
 from datetime import date
 import os
 
-from patreon.exceptions import ParseFailedException
+from common.exceptions import ParseFailedException
 
 baseURL = "https://www.patreon.com"
 
