@@ -85,7 +85,7 @@ mode = args.mode.lower()
 
 if mode in modes:
     currentMode = modes[mode]
-    print(f"Mode: {currentMode} selected.")
+    print(f"Mode: {currentMode} selected.\n")
 
     targets = []
 
@@ -96,7 +96,7 @@ if mode in modes:
                 for line in f:
                     targets.append(line.strip())
         except FileNotFoundError:
-            print("Error: Input file not found.\nExitting...")
+            print("Error: Input file not found.\nExiting...")
             exit(0)
     except AttributeError: #if targets were directly inputted on cmdline
         targets = args.targets
