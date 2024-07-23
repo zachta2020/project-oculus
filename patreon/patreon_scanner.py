@@ -220,3 +220,6 @@ class patreonScanner:
                 counter += 1
 
         print("Record Done.")
+
+    def close(self):
+        self.driver.close()
