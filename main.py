@@ -2,6 +2,8 @@ from patreon.patreon_scanner import patreonScanner
 from patreon.exceptions import ParseFailedException
 from youtube.youtube_scanner import youtubeScanner
 
+from selenium.common.exceptions import ElementNotInteractableException
+
 from argparse import ArgumentParser, SUPPRESS
 
 modes = {

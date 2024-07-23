@@ -23,13 +23,13 @@ from patreon.exceptions import ParseFailedException
 baseURL = "https://www.patreon.com"
 
 #patreon identifiers
-titleClass = "sc-jgrJph.YCXEB"
-subtitleClass = "sc-bdvvtL.lhrfPG"
+titleClass = "sc-cNKqjZ.dLHJZg"
+subtitleClass = "sc-dkPtRN.RtuUv"
 memberCountXPath = "//span[@data-tag='patron-count']"
 postCountXPath = "//span[@data-tag='creation-count']"
 incomeXPath = "//span[@data-tag='earnings-count']"
 
-seeMoreXPath = "//*[@id='renderPageContentWrapper']/div[1]/div/div/div[3]/div[2]/div[2]/div/div[5]/button"
+seeMoreClass = "sc-furwcr.ivHVVk"
 ageConfirmXPath = "//button[@data-tag='age-confirmation-button']"
 postListXPath = "//div[@data-tag='creator-public-page-recent-posts']"
 
@@ -75,6 +75,12 @@ class patreonScanner:
                 print("Age Confirmation Check failed.")
                 raise ParseFailedException("Parse Failed: Cannot read Creator page.")
             
+        try: #Does the age confirm not timeout the postlist check anymore?
+            ageConfirm = self.driver.find_element(By.XPATH, ageConfirmXPath)
+            ageConfirm.click()
+        except NoSuchElementException:
+            pass
+            
         # display all posts
         postTotal = float(
                 self.driver.find_element(By.XPATH, postCountXPath)
@@ -87,14 +93,17 @@ class patreonScanner:
 
             try:
                 WebDriverWait(self.driver, 5).until(
-                    EC.text_to_be_present_in_element((By.XPATH, seeMoreXPath), "See more posts")
+                    EC.presence_of_element_located((By.CLASS_NAME, seeMoreClass))
                 )
+
+                """ buttons = self.driver.find_elements(By.CLASS_NAME, seeMoreClass)
+                print(f"DEBUG: {len(buttons)}") """
 
                 
                 clickEstimate = int(math.ceil((postTotal - 20.0) / 20.0))
                 clickCounter = 1
 
-                seeMore = self.driver.find_element(By.XPATH, seeMoreXPath)
+                seeMore = self.driver.find_element(By.CLASS_NAME, seeMoreClass)
                 page = self.driver.find_element(By.TAG_NAME, "body")
 
                 seeMore.click()
