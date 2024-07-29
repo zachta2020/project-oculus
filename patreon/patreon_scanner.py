@@ -88,7 +88,7 @@ class patreonScanner:
                 .replace(",", "")
             )
         
-        if postTotal > 20:
+        if postTotal > 20: 
             print("Displaying all posts...")
 
             try:
@@ -154,6 +154,9 @@ class patreonScanner:
 
         soup = BeautifulSoup(self.driver.page_source, "html.parser")
 
+        with open("output/patreon_broke.html", "w") as f:
+            f.write(self.driver.page_source)
+
         recentPosts = soup.find(attrs={"data-tag": "all-posts-layout"})
         postList = recentPosts.find_all(attrs={"data-tag": "post-card"})
 
@@ -166,9 +169,22 @@ class patreonScanner:
                 sanitizedPostTitleText = postTitle.text.replace('\"', '\"\"')
                 postTitleText = sanitizedPostTitleText
 
+            #Post Date
             postDate = post.find(attrs={"data-tag": "post-published-at"})
-            postLink = postDate["href"]
+            if postDate is None:
+                postDate = post.find(class_="sc-iqseJM cAXRTW")
 
+            #Post Link
+            postTitleAnchor = postTitle.find("a")
+            postLink = "N/A"
+            if postTitleAnchor is not None: #when the post is not locked
+                postLink = postTitleAnchor["href"]
+            else:
+                postLockedLink = post.find("a", attrs={"data-tag":"join-button"})["href"]
+                #scrubbing the link
+                postLink = postLockedLink.replace("login?ru=%2F", "")
+                postLink = postLink.replace("%2F", "/")
+                postLink = postLink.replace("%3Fimmediate_pledge_flow%3Dtrue", "")
             postJoinButton = post.find(attrs={"data-tag": "join-button"})
             postLocked = False
             if postJoinButton != None:
