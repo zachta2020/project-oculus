@@ -253,8 +253,18 @@ class youtubeScanner:
         WebDriverWait(self.videoDriver, 10).until(
                 EC.presence_of_element_located((By.XPATH, titleXPath))
             )
+        
+        """ with open("output/expandButton.html", "w") as f:
+            f.write(self.videoDriver.page_source)
 
-        expandButton = self.videoDriver.find_element(By.ID, "expand")
+        self.videoDriver.save_screenshot("output/expandButton.png") """
+
+        expandButtons = self.videoDriver.find_elements(By.ID, "expand")
+        expandButton = None
+        for button in expandButtons:
+            if button.text == "...more":
+                expandButton = button
+
         expandButton.click()
         time.sleep(1)
 
@@ -381,7 +391,12 @@ class youtubeScanner:
         
         #self.videoDriver.save_screenshot("output/temp.png")
 
-        expandButton = self.videoDriver.find_element(By.ID, "expand")
+        expandButtons = self.videoDriver.find_elements(By.ID, "expand")
+        expandButton = None
+        for button in expandButtons:
+            if button.text == "...more":
+                expandButton = button
+
         expandButton.click()
         time.sleep(1)
 
