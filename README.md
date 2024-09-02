@@ -7,7 +7,7 @@ social media and content creator focused websites and save the output to a CSV f
 - YouTube
   
 ## Usage
-python3 main.py [MODE] (-t/--targets TARGETS | -f/--file FILE)
+python3 project-oculus [MODE] (-t/--targets TARGETS | -f/--file FILE)
 
 - MODE - the target website from the list of supported websites
 - TARGETS - one or more target users
