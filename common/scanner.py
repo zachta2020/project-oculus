@@ -5,15 +5,14 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 
 import os
-from datetime import date
 
 from common.info import Info
 
 class Scanner:
-    def __init__(self, target: str, website: str):
+    def __init__(self, target: str, website: str, info: Info):
         self.target: str = target
         self.website: str = website
-        self.info: Info
+        self.info: Info = info
 
         chrome_options = ChromeOptions()
         chrome_options.add_argument("--headless=new")
@@ -33,7 +32,8 @@ class Scanner:
         if not os.path.exists(output):
             os.makedirs(output)
 
-        fileName = f"{output}/{self.target}_{self.website}_results_{self.info.date}.csv"
+        fileName = f"{output}/{self.target}_{self.website}_results_{self.info.get_date()}.csv"
+        print(f"Saving to {fileName}...")
 
         with open(fileName, "w", encoding="utf8") as f:
             f.write(self.info.csv())
