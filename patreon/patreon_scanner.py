@@ -15,48 +15,39 @@ from bs4 import BeautifulSoup
 
 import time
 import math
-from datetime import date
-import os
 
+from common.scanner import Scanner
 from common.exceptions import ParseFailedException
-
-baseURL = "https://www.patreon.com"
+from patreon.patreon_info import PatreonInfo, PatreonPost
+from patreon.patreon_common import baseURL
 
 #patreon identifiers
-titleClass = "sc-cNKqjZ.dLHJZg"
-subtitleClass = "sc-dkPtRN.RtuUv"
+titleClass = "sc-cNKqjZ.fJWvCc"
+subtitleClass = "sc-dkPtRN.kyvGZN"
 memberCountXPath = "//span[@data-tag='patron-count']"
 postCountXPath = "//span[@data-tag='creation-count']"
 incomeXPath = "//span[@data-tag='earnings-count']"
 
-seeMoreClass = "sc-furwcr.ivHVVk"
+seeMoreClass = "sc-furwcr.gsGurg"
 ageConfirmXPath = "//button[@data-tag='age-confirmation-button']"
 postListXPath = "//div[@data-tag='creator-public-page-recent-posts']"
 
-class patreonScanner:
+class patreonScanner(Scanner):
     def __init__(self, target):
-        self.target = target
-
-        self.title = None
-        self.subtitle = None
-        self.memberCount = None
-        self.postCount = None
-        self.income = None
-
-        self.postList = []
-
-        #start Selenium in headless mode
-        options = Options()
-        options.add_argument("--headless=new")
-        self.driver = webdriver.Chrome(options=options)
+        super().__init__(target, "patreon", PatreonInfo())
 
     def getFullURL(self):
         if self.target.find(baseURL) == -1:
             return f"{baseURL}/{self.target}"
         else:
             return self.target
+        
+    def run(self):
+        self.__open()
+        print()
+        self.__scan()
 
-    def open(self):
+    def __open(self):
         fullURL = self.getFullURL()
         print(f"Opening {fullURL}...\n")
         self.driver.get(fullURL)
@@ -87,8 +78,10 @@ class patreonScanner:
                 .text.split(" ")[0]
                 .replace(",", "")
             )
+
+        postInc = 5.0
         
-        if postTotal > 20: 
+        if postTotal > postInc: 
             print("Displaying all posts...")
 
             try:
@@ -100,7 +93,7 @@ class patreonScanner:
                 print(f"DEBUG: {len(buttons)}") """
 
                 
-                clickEstimate = int(math.ceil((postTotal - 20.0) / 20.0))
+                clickEstimate = int(math.ceil((postTotal - postInc) / postInc))
                 clickCounter = 1
 
                 seeMore = self.driver.find_element(By.CLASS_NAME, seeMoreClass)
@@ -130,25 +123,25 @@ class patreonScanner:
 
         print("Open Done.")
 
-    def scan(self):
+    def __scan(self):
         print("Initiating Scan...")
 
-        self.title = self.driver.find_element(By.CLASS_NAME, titleClass).text
-        self.subtitle = self.driver.find_element(By.CLASS_NAME, subtitleClass).text
+        self.info.title = self.driver.find_element(By.CLASS_NAME, titleClass).text
+        self.info.subtitle = self.driver.find_element(By.CLASS_NAME, subtitleClass).text
 
         try:
-            self.memberCount = int(
+            self.info.memberCount = int(
                 self.driver.find_element(By.XPATH, memberCountXPath).text.split(" ")[0].replace(",", "")
             )
         except NoSuchElementException:
             pass
 
-        self.postCount = int(
+        self.info.postCount = int(
             self.driver.find_element(By.XPATH, postCountXPath).text.split(" ")[0].replace(",", "")
         )
 
         try:
-            self.income = self.driver.find_element(By.XPATH, incomeXPath).text
+            self.info.income = self.driver.find_element(By.XPATH, incomeXPath).text
         except NoSuchElementException:
             pass
 
@@ -172,7 +165,7 @@ class patreonScanner:
             #Post Date
             postDate = post.find(attrs={"data-tag": "post-published-at"})
             if postDate is None:
-                postDate = post.find(class_="sc-iqseJM cAXRTW")
+                postDate = post.find(class_="sc-iqseJM hNjSsc")
 
             #Post Link
             postTitleAnchor = postTitle.find("a")
@@ -190,52 +183,6 @@ class patreonScanner:
             if postJoinButton != None:
                 postLocked = True
 
-            self.postList.append([postTitleText, postDate.text, postLink, postLocked])
+            self.info.postList.append(PatreonPost(postTitleText, postDate.text, postLink, postLocked))
 
         print("Scan Done.")
-
-    def display(self):
-        print(f"Patreon: {self.title}\n{self.subtitle}\n")
-        if self.memberCount is not None:
-            print(f"Member Count: {self.memberCount}")
-        else:
-            print("Member Count not found")
-        print(f"Post Count: {len(self.postList)}/{self.postCount}")
-        if self.income is not None:
-            print(f"Income: {self.income}")
-        else:
-            print("Income not found")
-
-    def record(self):
-        output = "output"
-        if not os.path.exists(output):
-            os.makedirs(output)    
-
-        fileName = f"{output}/{self.getFullURL().split('/').pop()}_patreon_results_{date.today()}.csv"
-        print(f"Saving Results to {fileName}...")
-
-        with open(fileName, "w", encoding="utf8") as f:
-            f.write(f'Patreon,{self.title},"{self.subtitle}"\n')
-
-            if self.memberCount is not None:
-                f.write(f"Member Count,{self.memberCount}\n")
-            else:
-                f.write("Member Count,N/A\n")
-
-            f.write(f"Post Count,{self.postCount}\n")
-
-            if self.income is not None:
-                f.write(f'Income,"{self.income}"\n')
-            else:
-                f.write("Income,N/A\n")
-
-            counter = 1
-            f.write("Post,Title,Date,Link,Locked\n")
-            for info in self.postList:
-                f.write(f'{counter},"{info[0]}","{info[1]}",{baseURL + info[2]},{info[3]}\n')
-                counter += 1
-
-        print("Record Done.")
-
-    def close(self):
-        self.driver.close()
