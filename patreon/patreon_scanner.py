@@ -22,15 +22,17 @@ from patreon.patreon_info import PatreonInfo, PatreonPost
 from patreon.patreon_common import baseURL
 
 #patreon identifiers
-titleClass = "sc-cNKqjZ.fJWvCc"
-subtitleClass = "sc-dkPtRN.kyvGZN"
+titleClass = "sc-cNKqjZ.ldIKdq"
+subtitleClass = "sc-dkPtRN.cUqLgq"
 memberCountXPath = "//span[@data-tag='patron-count']"
 postCountXPath = "//span[@data-tag='creation-count']"
 incomeXPath = "//span[@data-tag='earnings-count']"
 
-seeMoreClass = "sc-furwcr.gsGurg"
+seeMoreClass = "sc-furwcr.bdCQnw"
 ageConfirmXPath = "//button[@data-tag='age-confirmation-button']"
 postListXPath = "//div[@data-tag='creator-public-page-recent-posts']"
+
+lockedPostDateClass = "sc-dJjYzT gkGGot" #beautiful soup style
 
 class patreonScanner(Scanner):
     def __init__(self, target):
@@ -79,7 +81,7 @@ class patreonScanner(Scanner):
                 .replace(",", "")
             )
 
-        postInc = 5.0
+        postInc = 20.0
         
         if postTotal > postInc: 
             print("Displaying all posts...")
@@ -157,32 +159,52 @@ class patreonScanner(Scanner):
 
             postTitle = post.find(attrs={"data-tag": "post-title"})
             postTitleText = "Title Not Found."
-            if postTitle != None:
 
+            if postTitle is not None:
+                print(f"DEBUG: Reading {postTitle.text}")
+            else:
+                print(f"DEBUG: Reading {postTitleText}")
+            
+            #self.driver.save_screenshot("secret/postDebug.png")
+
+            if postTitle != None:
                 sanitizedPostTitleText = postTitle.text.replace('\"', '\"\"')
                 postTitleText = sanitizedPostTitleText
 
             #Post Date
             postDate = post.find(attrs={"data-tag": "post-published-at"})
+            postDateText = "N/A"
             if postDate is None:
-                postDate = post.find(class_="sc-iqseJM hNjSsc")
+                postDateText = post.find(class_=lockedPostDateClass).text
+            else:
+                postDateText = postDate.text
 
             #Post Link
-            postTitleAnchor = postTitle.find("a")
+            postTitleAnchor = None
+            if postTitle is not None:
+                postTitleAnchor = postTitle.find("a")
+
             postLink = "N/A"
-            if postTitleAnchor is not None: #when the post is not locked
+            if postTitleAnchor is not None: #when the post is not locked and has a title
                 postLink = postTitleAnchor["href"]
-            else:
-                postLockedLink = post.find("a", attrs={"data-tag":"join-button"})["href"]
-                #scrubbing the link
-                postLink = postLockedLink.replace("login?ru=%2F", "")
-                postLink = postLink.replace("%2F", "/")
-                postLink = postLink.replace("%3Fimmediate_pledge_flow%3Dtrue", "")
+            elif postDate is not None: #if the post is not locked but has no title
+                postLink = postDate["href"]
+            else: #if the post is locked
+                try:
+                    postLockedLink = post.find("a", attrs={"data-tag":"join-button"})["href"]
+                    #scrubbing the link
+                    postLink = postLockedLink.replace("login?ru=%2F", "")
+                    postLink = postLink.replace("%2F", "/")
+                    postLink = postLink.replace("%3Fimmediate_pledge_flow%3Dtrue", "")
+                except TypeError:
+                    postLink = post.find("a", attrs={"data-tag":"comment-post-icon"})["href"]
+
+            #Post Locked
             postJoinButton = post.find(attrs={"data-tag": "join-button"})
             postLocked = False
             if postJoinButton != None:
                 postLocked = True
 
-            self.info.postList.append(PatreonPost(postTitleText, postDate.text, postLink, postLocked))
+            self.info.postList.append(PatreonPost(postTitleText, postDateText, postLink, postLocked))
 
         print("Scan Done.")
