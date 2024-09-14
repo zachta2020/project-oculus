@@ -168,8 +168,7 @@ class patreonScanner(Scanner):
             #self.driver.save_screenshot("secret/postDebug.png")
 
             if postTitle != None:
-                sanitizedPostTitleText = postTitle.text.replace('\"', '\"\"')
-                postTitleText = sanitizedPostTitleText
+                postTitleText = postTitle.text
 
             #Post Date
             postDate = post.find(attrs={"data-tag": "post-published-at"})
