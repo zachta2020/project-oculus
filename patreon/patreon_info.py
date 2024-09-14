@@ -25,7 +25,7 @@ class PatreonInfo(Info):
         else:
             csv += "Member Count,N/A\n"
 
-        csv += f"Scan Date,{self.get_date()}"
+        csv += f"Scan Date,{self.get_date()}\n"
 
         csv += f"Post Count,{self.postCount}\n"
 
@@ -66,4 +66,5 @@ class PatreonPost:
         self.locked: bool = locked
 
     def csv(self) -> str:
-        return f'"{self.title}","{self.date}",{baseURL + self.link},{self.locked}'
+        sanitizedTitle = self.title.replace('\"', '\"\"')
+        return f'"{sanitizedTitle}","{self.date}",{baseURL + self.link},{self.locked}'
