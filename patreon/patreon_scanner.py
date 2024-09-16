@@ -28,12 +28,9 @@ memberCountXPath = "//span[@data-tag='patron-count']"
 postCountXPath = "//span[@data-tag='creation-count']"
 incomeXPath = "//span[@data-tag='earnings-count']"
 
-seeMoreClass = "sc-furwcr.bdCQnw"
 seeMoreXPath = "//div[@data-tag='creator-public-page-recent-posts']/div[4]/button"
 ageConfirmXPath = "//button[@data-tag='age-confirmation-button']"
 postListXPath = "//div[@data-tag='creator-public-page-recent-posts']"
-
-lockedPostDateClass = "sc-dJjYzT gkGGot" #beautiful soup style
 
 class patreonScanner(Scanner):
     def __init__(self, target):
@@ -181,7 +178,7 @@ class patreonScanner(Scanner):
             postDate = post.find(attrs={"data-tag": "post-published-at"})
             postDateText = "N/A"
             if postDate is None:
-                postDateText = post.find(class_=lockedPostDateClass).text
+                postDateText = post.find(id="track-click").text
             else:
                 postDateText = postDate.text
 
