@@ -128,8 +128,10 @@ class patreonScanner(Scanner):
     def __scan(self):
         print("Initiating Scan...")
 
-        self.info.title = self.driver.find_element(By.CLASS_NAME, titleClass).text
-        self.info.subtitle = self.driver.find_element(By.CLASS_NAME, subtitleClass).text
+        titleList = self.driver.title.split("|")
+        
+        self.info.title = titleList[0]
+        self.info.subtitle = titleList[1].strip()
 
         try:
             self.info.memberCount = int(
