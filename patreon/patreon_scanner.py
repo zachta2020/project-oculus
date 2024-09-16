@@ -22,13 +22,14 @@ from patreon.patreon_info import PatreonInfo, PatreonPost
 from patreon.patreon_common import baseURL
 
 #patreon identifiers
-titleClass = "sc-cNKqjZ.ldIKdq"
-subtitleClass = "sc-dkPtRN.cUqLgq"
+#titleClass = "sc-cNKqjZ.ldIKdq"
+#subtitleClass = "sc-dkPtRN.cUqLgq"
 memberCountXPath = "//span[@data-tag='patron-count']"
 postCountXPath = "//span[@data-tag='creation-count']"
 incomeXPath = "//span[@data-tag='earnings-count']"
 
 seeMoreClass = "sc-furwcr.bdCQnw"
+seeMoreXPath = "//div[@data-tag='creator-public-page-recent-posts']/div[4]/button"
 ageConfirmXPath = "//button[@data-tag='age-confirmation-button']"
 postListXPath = "//div[@data-tag='creator-public-page-recent-posts']"
 
@@ -88,17 +89,21 @@ class patreonScanner(Scanner):
 
             try:
                 WebDriverWait(self.driver, 5).until(
-                    EC.presence_of_element_located((By.CLASS_NAME, seeMoreClass))
+                    EC.presence_of_element_located((By.XPATH, seeMoreXPath))
                 )
 
-                """ buttons = self.driver.find_elements(By.CLASS_NAME, seeMoreClass)
-                print(f"DEBUG: {len(buttons)}") """
+                """ buttons = self.driver.find_elements(By.XPATH, "//div[@data-tag='creator-public-page-recent-posts']/div[4]/button")
+                print(f"DEBUG: {len(buttons)}")
+                counter = 1
+                for button in buttons:
+                    print(f"{counter} - {button.text}")
+                    counter += 1 """
 
                 
                 clickEstimate = int(math.ceil((postTotal - postInc) / postInc))
                 clickCounter = 1
 
-                seeMore = self.driver.find_element(By.CLASS_NAME, seeMoreClass)
+                seeMore = self.driver.find_element(By.XPATH, seeMoreXPath)
                 page = self.driver.find_element(By.TAG_NAME, "body")
 
                 seeMore.click()
@@ -162,10 +167,10 @@ class patreonScanner(Scanner):
             postTitle = post.find(attrs={"data-tag": "post-title"})
             postTitleText = "Title Not Found."
 
-            if postTitle is not None:
+            """ if postTitle is not None:
                 print(f"DEBUG: Reading {postTitle.text}")
             else:
-                print(f"DEBUG: Reading {postTitleText}")
+                print(f"DEBUG: Reading {postTitleText}") """
             
             #self.driver.save_screenshot("secret/postDebug.png")
 
