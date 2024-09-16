@@ -8,7 +8,7 @@ class Info:
         self.date: datetime = datetime.today()
 
     def get_date(self):
-        return f"{self.date.year}-{self.date.month}-{self.date.day}_{self.date.hour}:{self.date.minute}"
+        return f"{self.date.year}-{self.date.month}-{self.date.day}_{self.date.hour}:{str(self.date.minute).zfill(2)}"
 
     def csv(self) -> str:
         return ""
