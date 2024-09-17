@@ -1,6 +1,6 @@
 from patreon.scanner import patreonScanner
 from common.exceptions import ParseFailedException
-from youtube.youtube_scanner import youtubeScanner
+from youtube.scanner import youtubeScanner
 
 from selenium.common.exceptions import ElementNotInteractableException
 
@@ -8,13 +8,15 @@ from argparse import ArgumentParser, SUPPRESS
 
 modes = {
     "patreon" : "Patreon",
-    #"youtube" : "YouTube"
+    "youtube" : "YouTube"
     }
 
 def scanTarget(target, mode):
     scanner = None
     if mode == "patreon":
         scanner = patreonScanner(target)
+    elif mode == "youtube":
+        scanner = youtubeScanner(target)
     try:
         scanner.run()
         print()

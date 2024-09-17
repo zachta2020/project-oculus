@@ -3,20 +3,26 @@ Common interface for website scanner objects
 """
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.firefox.options import Options as FireFoxOptions
 
 import os
 
 from common.info import Info
 
 class Scanner:
-    def __init__(self, target: str, website: str, info: Info):
+    def __init__(self, target: str, website: str, info: Info, driverSelect: str = "chrome"):
         self.target: str = target
         self.website: str = website
         self.info: Info = info
 
-        chrome_options = ChromeOptions()
-        chrome_options.add_argument("--headless=new")
-        self.driver = webdriver.Chrome(options=chrome_options)
+        if driverSelect.lower() == "chrome":
+            chrome_options = ChromeOptions()
+            chrome_options.add_argument("--headless=new")
+            self.driver = webdriver.Chrome(options=chrome_options)
+        elif driverSelect.lower() == "firefox":
+            firefox_options = FireFoxOptions()
+            firefox_options.add_argument("-headless")
+            self.driver = webdriver.Firefox(options=firefox_options)
 
     def getFullURL(self):
         pass
