@@ -48,7 +48,7 @@ class PatreonInfo(Info):
         if self.memberCount is not None:
             info += f"Member Count: {self.memberCount}\n"
         else:
-            info += "Member Count not found"
+            info += "Member Count not found\n"
         info += f"Post Count: {len(self.postList)}/{self.postCount}\n"
         if self.income is not None:
             info += f"Income: {self.income}"
