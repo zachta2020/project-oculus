@@ -1,4 +1,4 @@
-from patreon.patreon_scanner import patreonScanner
+from patreon.scanner import patreonScanner
 from common.exceptions import ParseFailedException
 from youtube.youtube_scanner import youtubeScanner
 
