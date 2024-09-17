@@ -18,8 +18,7 @@ import math
 
 from common.scanner import Scanner
 from common.exceptions import ParseFailedException
-from patreon.patreon_info import PatreonInfo, PatreonPost
-from patreon.patreon_common import baseURL
+from patreon.info import PatreonInfo, PatreonPost
 
 #patreon identifiers
 #titleClass = "sc-cNKqjZ.ldIKdq"
@@ -31,6 +30,8 @@ incomeXPath = "//span[@data-tag='earnings-count']"
 seeMoreXPath = "//div[@data-tag='creator-public-page-recent-posts']/div[4]/button"
 ageConfirmXPath = "//button[@data-tag='age-confirmation-button']"
 postListXPath = "//div[@data-tag='creator-public-page-recent-posts']"
+
+baseURL = "https://www.patreon.com"
 
 class patreonScanner(Scanner):
     def __init__(self, target):
@@ -208,6 +209,6 @@ class patreonScanner(Scanner):
             if postJoinButton != None:
                 postLocked = True
 
-            self.info.postList.append(PatreonPost(postTitleText, postDateText, postLink, postLocked))
+            self.info.postList.append(PatreonPost(postTitleText, postDateText, baseURL + postLink, postLocked))
 
         print("Scan Done.")

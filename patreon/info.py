@@ -2,7 +2,6 @@
 Info object representing a patreon creator's account
 """
 from common.info import Info
-from patreon.patreon_common import baseURL
 
 class PatreonInfo(Info):
     def __init__(self):
@@ -67,4 +66,4 @@ class PatreonPost:
 
     def csv(self) -> str:
         sanitizedTitle = self.title.replace('\"', '\"\"')
-        return f'"{sanitizedTitle}","{self.date}",{baseURL + self.link},{self.locked}'
+        return f'"{sanitizedTitle}","{self.date}",{self.link},{self.locked}'
