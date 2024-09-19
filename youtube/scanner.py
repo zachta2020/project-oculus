@@ -73,7 +73,11 @@ class youtubeScanner(Scanner):
                 time.sleep(1)
 
                 #get oldest video title
-                oldestTitle = self.driver.find_element(By.ID, "video-title").text
+                oldestTitle = ""
+                if pageName == "/shorts":
+                    oldestTitle = self.driver.find_element(By.CLASS_NAME, "ShortsLockupViewModelHostEndpoint.ShortsLockupViewModelHostOutsideMetadataEndpoint").text
+                else:
+                    oldestTitle = self.driver.find_element(By.ID, "video-title").text
 
                 chips[0].click() #click newest chip
                 time.sleep(1)
@@ -83,7 +87,11 @@ class youtubeScanner(Scanner):
                 #scroll down until the oldest video title is found
                 counter = 1
                 while True:
-                    titles = self.driver.find_elements(By.ID, "video-title")
+                    titles = []
+                    if pageName == "/shorts":
+                        titles = self.driver.find_elements(By.CLASS_NAME, "ShortsLockupViewModelHostEndpoint.ShortsLockupViewModelHostOutsideMetadataEndpoint")
+                    else:
+                        titles = self.driver.find_elements(By.ID, "video-title")
                     lastTitle = titles[len(titles)-1].text
                     if lastTitle == oldestTitle:
                         break
@@ -168,30 +176,31 @@ class youtubeScanner(Scanner):
         WebDriverWait(self.videoDriver, 10).until(
                 EC.presence_of_element_located((By.XPATH, titleXPath))
             )
-        
-        """ with open("output/expandButton.html", "w") as f:
-            f.write(self.videoDriver.page_source)
 
-        self.videoDriver.save_screenshot("output/expandButton.png") """
-
-        expandButtons = self.videoDriver.find_elements(By.ID, "expand")
+        """ expandButtons = self.videoDriver.find_elements(By.ID, "expand")
         expandButton = None
         for button in expandButtons:
             if button.text == "...more":
                 expandButton = button
 
         expandButton.click()
-        time.sleep(1)
+        time.sleep(1) """
 
         vidTitle = self.videoDriver.find_element(By.XPATH, titleXPath).text
         print(vidTitle)
 
-        watchInfoString = self.videoDriver.find_element(By.CLASS_NAME, "style-scope.ytd-watch-info-text").text.strip()
-        watchInfoList = watchInfoString.split("  ")
+        """ watchInfoString = self.videoDriver.find_element(By.CLASS_NAME, "style-scope.ytd-watch-info-text").text.strip()
+        watchInfoList = watchInfoString.split("  ") """
 
         #print(watchInfoList)
 
         soup = BeautifulSoup(self.videoDriver.page_source, "html.parser")
+
+        #Test of improvement
+        watchInfoTestString = soup.find("tp-yt-paper-tooltip", class_="style-scope ytd-watch-info-text").text.strip()
+        watchInfoList = watchInfoTestString.split(" • ")
+        """ for e in watchInfoList:
+            print(e) """
 
         likeButton = soup.find("like-button-view-model")
         vidLikes = likeButton.find(title="I like this")["aria-label"].split(" ")[5]
@@ -217,21 +226,6 @@ class youtubeScanner(Scanner):
         self.videoDriver.get(shortURL)
 
         titleClassName = "title.style-scope.reel-player-header-renderer"
-        moreActionsXPath = "//yt-button-shape/button[@aria-label='More actions']"
-
-        WebDriverWait(self.videoDriver, 5).until(
-                EC.presence_of_element_located((By.XPATH, moreActionsXPath))
-            )
-
-        moreActionsButton = self.videoDriver.find_element(By.XPATH, moreActionsXPath)
-        moreActionsButton.click()
-        time.sleep(3)
-
-        #self.driver.save_screenshot("output/page0.png")
-
-        descriptionOption = self.videoDriver.find_element(By.XPATH, "//*[@id='items']/ytd-menu-service-item-renderer[1]/tp-yt-paper-item")
-        descriptionOption.click()
-        time.sleep(1)
 
         #self.driver.save_screenshot("output/page.png")
         
@@ -276,27 +270,29 @@ class youtubeScanner(Scanner):
         
         #self.videoDriver.save_screenshot("output/temp.png")
 
-        expandButtons = self.videoDriver.find_elements(By.ID, "expand")
+        """ expandButtons = self.videoDriver.find_elements(By.ID, "expand")
         expandButton = None
         for button in expandButtons:
             if button.text == "...more":
                 expandButton = button
 
         expandButton.click()
-        time.sleep(1)
+        time.sleep(1) """
 
         vidTitle = self.videoDriver.find_element(By.XPATH, titleXPath).text
         print(vidTitle)
 
-        watchInfoString = self.videoDriver.find_element(By.CLASS_NAME, "style-scope.ytd-watch-info-text").text.strip()
-        watchInfoList = watchInfoString.split("  ")
+        """ watchInfoString = self.videoDriver.find_element(By.CLASS_NAME, "style-scope.ytd-watch-info-text").text.strip()
+        watchInfoList = watchInfoString.split("  ") """
 
         #print(watchInfoList)
 
+        soup = BeautifulSoup(self.videoDriver.page_source, "html.parser")
+
+        watchInfoTestString = soup.find("tp-yt-paper-tooltip", class_="style-scope ytd-watch-info-text").text.strip()
+        watchInfoList = watchInfoTestString.split(" • ")
         vidDate = watchInfoList[1]
         vidViews = watchInfoList[0]
-
-        soup = BeautifulSoup(self.videoDriver.page_source, "html.parser")
 
         likeButton = soup.find("like-button-view-model")
         vidLikes = likeButton.find(title="I like this")["aria-label"].split(" ")[5]
@@ -330,10 +326,12 @@ class youtubeScanner(Scanner):
         elif pageName == "streams":
             videos = self.liveSoup.find(id="contents", class_="style-scope ytd-rich-grid-renderer")
 
-        videoLinks = videos.find_all("a", id="video-title-link")
-        if len(videoLinks) == 0:
-            videoLinks = videos.find_all("a", id="thumbnail")
-
+        videoLinks = []
+        if pageName == "shorts":
+            videoLinks = videos.find_all("a", class_="ShortsLockupViewModelHostEndpoint reel-item-endpoint")
+        else:
+            videoLinks = videos.find_all("a", id="video-title-link")
+        
         print(f"Total Found: {len(videoLinks)}")
         counter = Counter(len(videoLinks))
         for link in videoLinks:
