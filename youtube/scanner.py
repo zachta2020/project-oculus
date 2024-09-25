@@ -177,20 +177,8 @@ class youtubeScanner(Scanner):
                 EC.presence_of_element_located((By.XPATH, titleXPath))
             )
 
-        """ expandButtons = self.videoDriver.find_elements(By.ID, "expand")
-        expandButton = None
-        for button in expandButtons:
-            if button.text == "...more":
-                expandButton = button
-
-        expandButton.click()
-        time.sleep(1) """
-
         vidTitle = self.videoDriver.find_element(By.XPATH, titleXPath).text
         print(vidTitle)
-
-        """ watchInfoString = self.videoDriver.find_element(By.CLASS_NAME, "style-scope.ytd-watch-info-text").text.strip()
-        watchInfoList = watchInfoString.split("  ") """
 
         #print(watchInfoList)
 
@@ -203,23 +191,33 @@ class youtubeScanner(Scanner):
             print(e) """
 
         likeButton = soup.find("like-button-view-model")
-        vidLikes = likeButton.find(title="I like this")["aria-label"].split(" ")[5]
 
-        if watchInfoList[1].find("Premieres") != -1: #if the video is pre scheduled
-            vidDate = watchInfoList[1].replace("Premieres ", "")
+        vidLikes = ""
+        try:
+            vidLikes = likeButton.find(title="I like this")["aria-label"].split(" ")[5]
+        except IndexError:
+            print("Like count not found. Proceeding...")
+            vidLikes = "Hidden"
+
+        if watchInfoList[1].find("Premieres") != -1 or watchInfoList[1].find("Scheduled") != -1: #pre scheduled
+            vidDate = watchInfoList[1].replace("Premieres ", "").replace("Scheduled for ", "")
             vidWaiting = watchInfoList[0].replace(" waiting", "")
             return youtubeScheduledInfo(title=vidTitle, date=vidDate, waiting=vidWaiting, likes=vidLikes, URL=vidURL)
-        elif watchInfoList[1].find("Premiere in progress") != -1:
+        elif watchInfoList[1].find("Premiere in progress") != -1 or watchInfoList[1].find("Started") != -1: #in progress
             vidCurrentViewers = watchInfoList[0].replace(" watching now", "")
-            vidDate = watchInfoList[1].replace("Premiere in progress. Started ", "")
+            vidDate = watchInfoList[1].replace("Premiere in progress. Started ", "").replace("Started streaming ", "")
             if vidDate.find("ago") != -1:
                 vidDate = relative_to_absolute(vidDate)
             else:
                 vidDate = vidDate.replace("on ", "")
             return youtubeCurrentInfo(title=vidTitle, date=vidDate, currentViewers=vidCurrentViewers, likes=vidLikes, URL=vidURL)
-        else:
-            vidDate = watchInfoList[1].replace("Premiered ", "")
+        else: #done
+            vidDate = watchInfoList[1].replace("Premiered ", "").replace("Streamed live ", "")
             vidViews = watchInfoList[0].replace(" views", "")
+            if vidDate.find("ago") != -1:
+                vidDate = relative_to_absolute(vidDate)
+            else:
+                vidDate = vidDate.replace("on ", "")
             return youtubeVideoInfo(title=vidTitle, date=vidDate, views=vidViews, likes=vidLikes, URL=vidURL)
     
     def __scanShort(self, shortURL):
@@ -258,65 +256,6 @@ class youtubeScanner(Scanner):
         shortLikes = shortInfo[0][0]
 
         return youtubeVideoInfo(title=shortTitle, date=shortDate, views=shortViews, likes=shortLikes, URL=shortURL)
-    
-    def __scanLivestream(self, streamURL, counter):
-        self.videoDriver.get(streamURL)
-
-        titleXPath = '//*[@id="title"]/h1/yt-formatted-string'
-
-        WebDriverWait(self.videoDriver, 10).until(
-                EC.presence_of_element_located((By.XPATH, titleXPath))
-            )
-        
-        #self.videoDriver.save_screenshot("output/temp.png")
-
-        """ expandButtons = self.videoDriver.find_elements(By.ID, "expand")
-        expandButton = None
-        for button in expandButtons:
-            if button.text == "...more":
-                expandButton = button
-
-        expandButton.click()
-        time.sleep(1) """
-
-        vidTitle = self.videoDriver.find_element(By.XPATH, titleXPath).text
-        print(vidTitle)
-
-        """ watchInfoString = self.videoDriver.find_element(By.CLASS_NAME, "style-scope.ytd-watch-info-text").text.strip()
-        watchInfoList = watchInfoString.split("  ") """
-
-        #print(watchInfoList)
-
-        soup = BeautifulSoup(self.videoDriver.page_source, "html.parser")
-
-        watchInfoTestString = soup.find("tp-yt-paper-tooltip", class_="style-scope ytd-watch-info-text").text.strip()
-        watchInfoList = watchInfoTestString.split(" • ")
-        vidDate = watchInfoList[1]
-        vidViews = watchInfoList[0]
-
-        likeButton = soup.find("like-button-view-model")
-        vidLikes = likeButton.find(title="I like this")["aria-label"].split(" ")[5]
-
-        if vidDate.find("Scheduled") != -1: #if the livestream is pre-planned
-            vidViews = vidViews.replace(" waiting", "")
-            vidDate = vidDate.replace("Scheduled for ", "")
-            return youtubeScheduledInfo(title=vidTitle, date=vidDate, waiting=vidViews, likes=vidLikes, URL=streamURL)
-        elif vidDate.find("Started") != -1: #if the livestream is currently airing
-            vidViews = vidViews.replace(" watching now", "")
-            vidDate = vidDate.replace("Started streaming ", "")
-            if vidDate.find("ago") != -1:
-                vidDate = relative_to_absolute(vidDate)
-            else:
-                vidDate = vidDate.replace("on ", "")
-            return youtubeCurrentInfo(title=vidTitle, date=vidDate, currentViewers=vidViews, likes=vidLikes, URL=streamURL)
-        else: #if it's a stream vod
-            vidViews = vidViews.replace(" views", "")
-            vidDate = vidDate.replace("Streamed live ", "")
-            if vidDate.find("ago") != -1:
-                vidDate = relative_to_absolute(vidDate)
-            else:
-                vidDate = vidDate.replace("on ", "")
-            return youtubeVideoInfo(title=vidTitle, date=vidDate, views=vidViews, likes=vidLikes, URL=streamURL)
 
     def __scanPage(self, pageName):
         if pageName == "videos":
@@ -353,7 +292,7 @@ class youtubeScanner(Scanner):
                     elif pageName == "shorts":
                         self.info.shorts.append(self.__scanShort(fullLink))
                     elif pageName == "streams":
-                        streamInfo = self.__scanLivestream(fullLink, counter)
+                        streamInfo = self.__scanVideo(fullLink)
                         if streamInfo.__class__.__name__ == "youtubeVideoInfo":
                             self.info.livestreamVODs.append(streamInfo)
                         elif streamInfo.__class__.__name__ == "youtubeCurrentInfo":
