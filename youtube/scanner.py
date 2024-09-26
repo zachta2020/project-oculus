@@ -16,8 +16,8 @@ import time
 
 from common.exceptions import ParseFailedException
 from common.scanner import Scanner
-from helpers.counter import Counter
-from youtube.helpers import relative_to_absolute
+from common.helpers.counter import Counter
+from youtube.helpers.date_util import relative_to_absolute
 from youtube.info import *
 
 baseURL = "https://www.youtube.com"
