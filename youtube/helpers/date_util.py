@@ -22,22 +22,25 @@ def relative_to_absolute(vidDate):
     hours = 0
     minutes = 0
     seconds = 0
-    if vidDate.find("hour") != -1:
+    if "hour" in vidDate or "h" in vidDate:
         hours = int(
             vidDate
                 .replace(" hours ago", "")
                 .replace(" hour ago", "")
+                .replace("h", "")
         )
-    if vidDate.find("minute") != -1:
+    if "minute" in vidDate or "m" in vidDate:
         minutes = int(
             vidDate
                 .replace(" minutes ago", "")
                 .replace(" minute ago", "")
+                .replace("m", "")
         )
-    if vidDate.find("second") != -1:
+    if "second" in vidDate or "s" in vidDate:
         seconds = int(
             vidDate
                 .replace(" seconds ago", "")
                 .replace(" second ago", "")
+                .replace("s", "")
         )
     return write_date(date.today() - timedelta(hours=hours, minutes=minutes, seconds=seconds))

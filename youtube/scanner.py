@@ -251,7 +251,20 @@ class youtubeScanner(Scanner):
             print(f"{firstHalf} {secondHalf}")
             print("===") """
 
-        shortDate = f"{shortInfo[2][0]}, {shortInfo[2][1]}"
+        #short date
+        shortDate: str
+        datePart1 = shortInfo[2][0]
+        datePart2 = shortInfo[2][1]
+
+        #if date is relative
+        if "Ago" in datePart2:
+            shortDate = relative_to_absolute(datePart1)
+        #absolute date
+        elif " " in datePart1: #if the first part contains the day and month
+            shortDate = f"{datePart1}, {datePart2}"
+        else:
+            shortDate = f"{datePart2}, {datePart1}"
+
         shortViews = shortInfo[1][0]
         shortLikes = shortInfo[0][0]
 
