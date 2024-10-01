@@ -80,51 +80,50 @@ class patreonScanner(Scanner):
                 .replace(",", "")
             )
 
-        postInc = 20.0
-        
-        if postTotal > postInc: 
+        try:
+            WebDriverWait(self.driver, 5).until(
+                EC.presence_of_element_located((By.XPATH, seeMoreXPath))
+            )
+
+            """ buttons = self.driver.find_elements(By.XPATH, "//div[@data-tag='creator-public-page-recent-posts']/div[4]/button")
+            print(f"DEBUG: {len(buttons)}")
+            counter = 1
+            for button in buttons:
+                print(f"{counter} - {button.text}")
+                counter += 1 """
+            
             print("Displaying all posts...")
 
-            try:
-                WebDriverWait(self.driver, 5).until(
-                    EC.presence_of_element_located((By.XPATH, seeMoreXPath))
-                )
+            postsLayout = self.driver.find_element(By.XPATH, "//div[@data-tag='all-posts-layout']")
+            postInc = len(postsLayout.find_elements(By.XPATH, "//div[@data-tag='post-card']"))
+            #print(postInc)
 
-                """ buttons = self.driver.find_elements(By.XPATH, "//div[@data-tag='creator-public-page-recent-posts']/div[4]/button")
-                print(f"DEBUG: {len(buttons)}")
-                counter = 1
-                for button in buttons:
-                    print(f"{counter} - {button.text}")
-                    counter += 1 """
+            clickEstimate = int(math.ceil((postTotal - postInc) / postInc))
+            clickCounter = 1
 
-                
-                clickEstimate = int(math.ceil((postTotal - postInc) / postInc))
-                clickCounter = 1
+            seeMore = self.driver.find_element(By.XPATH, seeMoreXPath)
+            page = self.driver.find_element(By.TAG_NAME, "body")
 
-                seeMore = self.driver.find_element(By.XPATH, seeMoreXPath)
-                page = self.driver.find_element(By.TAG_NAME, "body")
+            seeMore.click()
+            print(f"Click {clickCounter}/{clickEstimate}")
+            clickCounter += 1
 
-                seeMore.click()
-                print(f"Click {clickCounter}/{clickEstimate}")
-                clickCounter += 1
+            while True:
+                try:
+                    time.sleep(1)
+                    page.send_keys(Keys.END)
+                    time.sleep(1)
+                    seeMore.click()
+                    print(f"Click {clickCounter}/{clickEstimate}")
+                    clickCounter += 1
+                except ElementClickInterceptedException:
+                    print("Error: Click Intercepted. Retrying...")
+                except StaleElementReferenceException:
+                    print("End of Page found. Proceeding...")
+                    break
 
-                while True:
-                    try:
-                        time.sleep(1)
-                        page.send_keys(Keys.END)
-                        time.sleep(1)
-                        seeMore.click()
-                        print(f"Click {clickCounter}/{clickEstimate}")
-                        clickCounter += 1
-                    except ElementClickInterceptedException:
-                        print("Error: Click Intercepted. Retrying...")
-                    except StaleElementReferenceException:
-                        print("End of Page found. Proceeding...")
-                        break
-
-            except NoSuchElementException:
-                print("Error: Cannot find button")
-                raise ParseFailedException("Parse Failed: Cannot read Creator page.")
+        except NoSuchElementException:
+            print("See More Button not found. Proceeding...")
 
         print("Open Done.")
 
