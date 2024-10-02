@@ -122,8 +122,8 @@ class patreonScanner(Scanner):
                     print("End of Page found. Proceeding...")
                     break
 
-        except NoSuchElementException:
-            print("See More Button not found. Proceeding...")
+        except TimeoutException:
+            print("All Posts displayed. Proceeding...")
 
         print("Open Done.")
 
