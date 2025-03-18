@@ -74,8 +74,9 @@ class youtubeScanner(Scanner):
 
                 #get oldest video title
                 oldestTitle = ""
+                shortsTitleLookup = "shortsLockupViewModelHostEndpoint.shortsLockupViewModelHostOutsideMetadataEndpoint"
                 if pageName == "/shorts":
-                    oldestTitle = self.driver.find_element(By.CLASS_NAME, "ShortsLockupViewModelHostEndpoint.ShortsLockupViewModelHostOutsideMetadataEndpoint").text
+                    oldestTitle = self.driver.find_element(By.CLASS_NAME, shortsTitleLookup).text
                 else:
                     oldestTitle = self.driver.find_element(By.ID, "video-title").text
 
@@ -89,9 +90,10 @@ class youtubeScanner(Scanner):
                 while True:
                     titles = []
                     if pageName == "/shorts":
-                        titles = self.driver.find_elements(By.CLASS_NAME, "ShortsLockupViewModelHostEndpoint.ShortsLockupViewModelHostOutsideMetadataEndpoint")
+                        titles = self.driver.find_elements(By.CLASS_NAME, shortsTitleLookup)
                     else:
                         titles = self.driver.find_elements(By.ID, "video-title")
+                    
                     lastTitle = titles[len(titles)-1].text
                     if lastTitle == oldestTitle:
                         break
@@ -223,10 +225,17 @@ class youtubeScanner(Scanner):
     def __scanShort(self, shortURL):
         self.videoDriver.get(shortURL)
 
-        titleClassName = "title.style-scope.reel-player-header-renderer"
+        titleClassName = "ytShortsVideoTitleViewModelShortsVideoTitle"
 
         #self.driver.save_screenshot("output/page.png")
         
+        try:
+            WebDriverWait(self.videoDriver, 5).until(
+                EC.presence_of_element_located((By.CLASS_NAME, titleClassName))
+            )
+        except TimeoutException:
+            raise ParseFailedException("PARSE FAILED: CANNOT READ SHORT TITLE.")
+
         shortTitle = self.videoDriver.find_element(By.CLASS_NAME, titleClassName).text
 
         print(shortTitle)
@@ -235,7 +244,7 @@ class youtubeScanner(Scanner):
         """ with open("output/shortsPage.html", "w") as f:
             f.write(soup.prettify()) """
         
-        factoids = soup.find_all(class_="YtwFactoidRendererHost")
+        factoids = soup.find_all(class_="ytwFactoidRendererHost")
 
         #print(len(factoids))
 
@@ -243,8 +252,8 @@ class youtubeScanner(Scanner):
 
         shortInfo = []
         for fact in factoids:
-            firstHalf = fact.find(class_="YtwFactoidRendererValue").text
-            secondHalf = fact.find(class_="YtwFactoidRendererLabel").text
+            firstHalf = fact.find(class_="ytwFactoidRendererValue").text
+            secondHalf = fact.find(class_="ytwFactoidRendererLabel").text
             shortInfo.append((firstHalf, secondHalf))
 
             """ print("===")
@@ -280,7 +289,7 @@ class youtubeScanner(Scanner):
 
         videoLinks = []
         if pageName == "shorts":
-            videoLinks = videos.find_all("a", class_="ShortsLockupViewModelHostEndpoint reel-item-endpoint")
+            videoLinks = videos.find_all("a", class_="shortsLockupViewModelHostEndpoint shortsLockupViewModelHostOutsideMetadataEndpoint")
         else:
             videoLinks = videos.find_all("a", id="video-title-link")
         
@@ -313,9 +322,14 @@ class youtubeScanner(Scanner):
                         elif streamInfo.__class__.__name__ == "youtubeScheduledInfo":
                             self.info.scheduledLivestreams.append(streamInfo)
                     break
-                except NoSuchElementException as e:
+                except NoSuchElementException:
                     if retryAttempts > 0:
                         print("SCAN FAILED: UNABLE TO FIND ELEMENT. Retrying...")
+                        retryAttempts -= 1
+                        continue
+                except ParseFailedException as e:
+                    if retryAttempts > 0:
+                        print(f"{e} Retrying...")
                         retryAttempts -= 1
                         continue
                 except TimeoutException:
